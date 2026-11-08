@@ -8,8 +8,8 @@
 `arith` is an arithmetic-coding library in pure safe Rust, after G. G.
 Langdon, Jr., *An Introduction to Arithmetic Coding* (IBM J. Res. Develop.
 28(2), 1984). `acz` is a file compressor built on it, used like `gzip` or
-`zstd`. The library and the compressor use no other packages and no
-`unsafe` code, and they run on any processor Rust supports.
+`zstd`. The library and the compressor use no external crate dependencies
+and no `unsafe` code.
 
 ## Building
 
@@ -32,10 +32,10 @@ acz -c a b > ab.acz                  # several inputs into one stream
 cat a.acz b.acz | unacz              # concatenated streams decode in order
 ```
 
-No option is needed for good results: the defaults are the strongest
-model, all available cores, and a memory budget of half the machine's
-physical memory (`--memory=auto`). Decompression needs no options to
-choose a model or size, because the stream records them.
+The defaults are model `-4`, all available cores, and `--memory=auto`.
+The automatic budget is half the detected physical memory or cgroup v2
+memory limit, whichever is smaller; it is 4 GiB if neither can be detected.
+Decompression reads the model and block size from the stream.
 
 ### Options
 
@@ -49,12 +49,12 @@ choose a model or size, because the stream records them.
 | `-f`, `--force` | replace existing files; allow compressed data to or from a terminal |
 | `-k`, `--keep` | keep input files (the default) |
 | `--rm` | remove each input file after its output is safely written |
-| `-0` … `-4`, `--order N` | model; higher compresses better, and `-4`, the default, best (see below) |
+| `-0` … `-4`, `--order N` | select a model; default `-4` (see below) |
 | `-T N`, `--threads N` | at most N worker threads (default: all cores) |
 | `--block SIZE` | block size, 64K to 1G (default 16M) |
 | `--dedup[=SIZE]` | remove long repeats up to SIZE back (default 256M); off by default |
 | `--no-dedup` | disable repeat removal; the last `--dedup` or `--no-dedup` option wins |
-| `--memory SIZE` | memory budget, or `auto` (the default): half of physical memory, or 4G if that cannot be found |
+| `--memory SIZE` | budget for models and buffers, or `auto` (the default, described above) |
 | `-v`, `--verbose` | report sizes on standard error |
 | `-q`, `--quiet` | suppress warnings |
 | `-h`, `--help`; `-V`, `--version` | show help or version |
@@ -71,28 +71,26 @@ The exit status is 0 on success and 1 if any input failed (the others are
 still processed). If the reader of standard output goes away, as in
 `aczcat big.acz | head`, acz stops quietly with status 141.
 
-### What acz guarantees
+### File handling and resource limits
 
-* **Inputs are never lost.** acz never modifies an input. Each output is
-  written to a temporary file and moved into place only after compression
-  or decompression has succeeded, and `--rm` removes an input only after
-  that.
-* **Existing files are not replaced** without `-f`, even one created while
-  acz runs. An output that is the same file as an input, under any name,
-  is refused.
-* **`-o` is all or nothing:** if any input fails, the output is not written.
-* **Corruption is caught.** acz checks a CRC-64 of the header, of every
-  block and of all the decoded data, and refuses the output when a check
-  fails (output already sent to a pipe cannot be taken back).
-* **Memory follows `--memory`.** acz works out what each worker needs
-  (its model and block buffers), runs only as many workers as fit in the
-  budget, and refuses a stream it cannot fit before allocating anything.
-  The budget never changes the output. The budget is not a hard limit on
-  the whole process.
-* **Output is the same everywhere:** the same input and options give the
-  same bytes on every platform and with any number of threads.
-* **Incompressible data barely grows:** by at most 17 bytes per block
-  (29 with `--dedup`) plus 33 bytes per input file.
+* acz does not modify input files. It writes each output file to a temporary
+  file and installs it after compression or decompression succeeds.
+  `--rm` removes the input only after its output file has been installed.
+* Existing files are not replaced without `-f`, including files created
+  while acz runs. acz rejects an output that refers to an input file.
+* An output file specified with `-o` is installed only if all inputs succeed.
+* acz verifies CRC-64 checksums of the header, each block, and the decoded
+  data. A checksum mismatch is an error. Bytes already written to standard
+  output cannot be withdrawn.
+* `--memory` sets the budget for models, block buffers, and the repeat
+  window when enabled. acz uses their estimated allocation sizes to limit
+  the worker count. A stream that cannot fit with one worker is rejected
+  before its model and history buffers are allocated. The budget does not
+  change the encoded bytes and is not a hard limit on total process memory.
+* The same input and encoding settings produce identical bytes across
+  platforms and thread counts.
+* Maximum expansion is 17 bytes per block (29 with `--dedup`), plus
+  33 bytes per input file.
 
 ### Choosing a model
 
@@ -194,7 +192,7 @@ instructions for putting the repeats back.)
 The full specification is the documentation of
 [`acz/src/format.rs`](acz/src/format.rs).
 
-The format is version 10 and may change until release 1.0. Each change
+The format is version 11 and may change until release 1.0. Each change
 increments the version, and streams of older versions are rejected, never
 misread.
 
