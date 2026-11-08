@@ -5,11 +5,10 @@
   <em>Dedicated to the memory of my colleague Glen G. Langdon</em>
 </p>
 
-`arith` is an arithmetic-coding library in pure safe Rust, after G. G.
-Langdon, Jr., *An Introduction to Arithmetic Coding* (IBM J. Res. Develop.
-28(2), 1984). `acz` is a file compressor built on it, used like `gzip` or
-`zstd`. The library and the compressor use no external crate dependencies
-and no `unsafe` code.
+`arith` is a finite-precision arithmetic-coding library in Rust, based on
+G. G. Langdon, Jr., *An Introduction to Arithmetic Coding* (IBM J. Res.
+Develop. 28(2), 1984). `acz` is a command-line file compressor built on
+the library. Neither uses external crate dependencies or `unsafe` code.
 
 ## Building
 
@@ -27,7 +26,7 @@ aczcat report.txt.acz       # writes to standard output (same as acz -dc)
 acz -t report.txt.acz       # checks the file without writing anything
 acz --rm report.txt         # removes report.txt once report.txt.acz is written
 
-tar cf - dir | acz > dir.tar.acz     # with no file names, acz is a filter
+tar cf - dir | acz > dir.tar.acz     # no file names: read stdin, write stdout
 acz -c a b > ab.acz                  # several inputs into one stream
 cat a.acz b.acz | unacz              # concatenated streams decode in order
 ```
@@ -48,7 +47,7 @@ Decompression reads the model and block size from the stream.
 | `-o FILE`, `--output FILE` | write everything to one file |
 | `-f`, `--force` | replace existing files; allow compressed data to or from a terminal |
 | `-k`, `--keep` | keep input files (the default) |
-| `--rm` | remove each input file after its output is safely written |
+| `--rm` | remove each input after its output file is installed; ignored with `-c`, `-o`, or `-t` |
 | `-0` … `-4`, `--order N` | select a model; default `-4` (see below) |
 | `-T N`, `--threads N` | at most N worker threads (default: all cores) |
 | `--block SIZE` | block size, 64K to 1G (default 16M) |
@@ -61,14 +60,15 @@ Decompression reads the model and block size from the stream.
 
 A long option's value can follow `=` or be the next argument
 (`--block=1M` or `--block 1M`), except for `--dedup`, whose value is
-optional and must follow `=`. The window must be larger than the block; a
-window given larger than the block stays larger after rounding. Sizes are byte counts with an optional `K`,
-`M` or `G` (powers of 1024; `16M`, `16MB` and `16MiB` are the same, in
-either case). Block and window sizes are rounded up to a power of two.
-Short flags combine: `-dc` is `-d -c`. `acz --help` gives the full text.
+optional and must follow `=`. The repeat window must be larger than the
+block. A requested window larger than the block remains larger after
+rounding. Sizes are byte counts with optional `K`, `M` or `G` suffixes
+(powers of 1024). `16M`, `16MB` and `16MiB` mean the same size; suffixes
+are case-insensitive. Block and window sizes are rounded up to powers of
+two. Short flags combine: `-dc` is `-d -c`. Run `acz --help` for all options.
 
 The exit status is 0 on success and 1 if any input failed (the others are
-still processed). If the reader of standard output goes away, as in
+still processed). If the reader of standard output closes early, as in
 `aczcat big.acz | head`, acz stops quietly with status 141.
 
 ### File handling and resource limits
@@ -96,8 +96,8 @@ still processed). If the reader of standard output goes away, as in
 
 | model | predicts each byte from |
 |---|---|
-| `-4` (default) | many contexts, mixed (context mixing, the PAQ family) |
-| `-3` | the longest context that has seen it, up to 6 bytes (PPMd variant H) |
+| `-4` (default) | a weighted combination of context-model predictions (context mixing) |
+| `-3` | contexts of up to 6 preceding bytes, with escape to shorter contexts (PPMd variant H) |
 | `-2` | the previous two bytes, one bit at a time |
 | `-1` | the previous byte |
 | `-0` | byte frequencies alone |
@@ -107,32 +107,29 @@ memory allocator, and range coder in 7-Zip's `Ppmd7` implementation by
 Igor Pavlov, based on Dmitry Shkarin's PPMd. Its algorithms and data
 structures follow that implementation. The source credits both authors.
 
-Blocks can be coded independently by multiple workers; actual scaling
-depends on the input size, memory budget, and machine.
-
-At the default 16 MiB block size, each `-4` worker is allowed about 213
-MiB, so a 4 GiB budget admits 19 workers (a machine with 8 GiB of memory
-has that budget by default). With multiple workers, `-3` is allowed about
-320 MiB per worker (12 workers in 4 GiB), including queued block buffers.
+At the default 16 MiB block size, memory planning budgets about 213 MiB
+per `-4` worker, so a 4 GiB budget admits 19 workers. For `-3` with multiple
+workers, it budgets about 320 MiB per worker (12 workers in 4 GiB),
+including queued block buffers.
 Its model uses an arena of 16 bytes per modeled input byte, clamped to
 1–256 MiB, plus its estimator tables and fixed state. With `--dedup`,
-the modeled input is the residual after copies are removed. The other
-models need about 70 to 100 MB per worker.
+the modeled input is the residual after copies are removed.
 
 ### Long-repeat removal (`--dedup`)
 
 `--dedup` finds repeats of 256 bytes or more anywhere in the last 256 MiB
-of input (or `--dedup=SIZE`) and replaces them with references before the
-model sees the data. It helps when the same long content recurs far apart,
-beyond one block, as in an archive of similar files:
+of input (or `--dedup=SIZE`) and replaces them with copy commands before
+model encoding. Repeats can cross block boundaries. For example, to
+enable repeat removal when compressing an archive:
 
 ```sh
 tar cf - backups/ | acz --dedup > backups.tar.acz
 ```
 
-Its effect depends on the input and the downstream model; it is off by
-default. At the default window it needs about 320 MiB more memory
-to compress and 290 MiB more to decompress. It works with every model.
+Repeat removal is off by default and can be enabled with any model.
+It does not always improve compression. At the default window it adds
+about 320 MiB to the compression memory budget and 290 MiB to the
+decompression memory budget.
 
 ### Record contexts
 
@@ -163,38 +160,38 @@ let mut dec = Decoder::new(&code[..])?;
 let first = dec.decode_symbol(&mut model)?; // b'a'
 ```
 
-* `Encoder` and `Decoder` code any alphabet: a model gives each symbol an
-  interval of a total of at most 2³⁰. The carry problem Langdon describes
-  is solved with pending bits, so no output bit is ever revised, and the
-  decoder reads exactly the bits the encoder wrote.
-* `RangeEncoder` and `RangeDecoder` code binary decisions a byte at a time,
-  for models that predict bits.
-* `FrequencyTable` is an adaptive model for any alphabet; `BitModel` is an
-  adaptive probability for one binary decision. Implement the `Model`
-  trait for your own.
+* `Encoder` and `Decoder` encode and decode symbols using cumulative
+  frequency intervals supplied by a model. The frequency total must be
+  positive and at most 2³⁰. The coder uses bit normalization and buffers underflow bits
+  until their values are determined.
+* `RangeEncoder` and `RangeDecoder` encode and decode binary decisions
+  using byte normalization.
+* `FrequencyTable` maintains adaptive symbol frequencies. `BitModel`
+  maintains an adaptive probability for a binary decision. Custom models
+  implement the `Model` trait.
 
-A code string does not mark its own end: the decoder must know how many
-symbols to read, from a length, an end symbol, or framing.
+The decoder needs a symbol count, an explicit end symbol, or enclosing
+file framing to determine when to stop.
 
 ## The .acz format
 
-For each input file, acz writes a 16-byte header (which model, block size
-and repeat window were used, and a checksum), then the data in blocks of
-the block size, then an end marker and a final checksum and length.
+For each input file, acz writes a 16-byte header containing the model,
+block size, repeat-window size, and header checksum. The data blocks
+follow, then an end marker, data checksum, and original length.
 
-Each block is compressed on its own, starting from an untrained model;
-that is what lets several cores work on different blocks at once. If
-compressing a block would not make it smaller, acz writes the block's
-original bytes instead, with a small header and checksum. (With `--dedup`
-it writes the bytes left after removing repeats, along with the
-instructions for putting the repeats back.)
+Each block's model is initialized separately, allowing model encoding and
+decoding in parallel. If a block's compressed representation is not smaller
+than its input, acz stores the input bytes with a block header and checksum.
+With `--dedup`, the model encodes the residual bytes after repeat removal;
+literal and copy commands specify how to reconstruct the original input.
+Repeat removal and reconstruction run in stream order.
 
 The full specification is the documentation of
 [`acz/src/format.rs`](acz/src/format.rs).
 
-The format is version 11 and may change until release 1.0. Each change
-increments the version, and streams of older versions are rejected, never
-misread.
+The current format is version 11. Format changes increment the version;
+the decoder rejects unsupported versions. Format compatibility is not
+guaranteed before release 1.0.
 
 ## License
 
