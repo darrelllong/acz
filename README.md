@@ -61,8 +61,7 @@ Decompression reads the model and block size from the stream.
 A long option's value can follow `=` or be the next argument
 (`--block=1M` or `--block 1M`), except for `--dedup`, whose value is
 optional and must follow `=`. The repeat window must be larger than the
-block. A requested window larger than the block remains larger after
-rounding. Sizes are byte counts with optional `K`, `M` or `G` suffixes
+block. Sizes are byte counts with optional `K`, `M` or `G` suffixes
 (powers of 1024). `16M`, `16MB` and `16MiB` mean the same size; suffixes
 are case-insensitive. Block and window sizes are rounded up to powers of
 two. Short flags combine: `-dc` is `-d -c`. Run `acz --help` for all options.
@@ -87,8 +86,9 @@ still processed). If the reader of standard output closes early, as in
   the worker count. A stream that cannot fit with one worker is rejected
   before its model and history buffers are allocated. The budget does not
   change the encoded bytes and is not a hard limit on total process memory.
-* The same input and encoding settings produce identical bytes across
-  platforms and thread counts.
+* Encoding is deterministic for fixed input and encoding settings; thread
+  count does not change the encoded bytes. Cross-platform output identity
+  has been checked on arm64 macOS and aarch64 Linux.
 * Maximum expansion is 17 bytes per block (29 with `--dedup`), plus
   33 bytes per input file.
 
