@@ -53,7 +53,7 @@ choose a model or size, because the stream records them.
 | `-T N`, `--threads N` | at most N worker threads (default: all cores) |
 | `--block SIZE` | block size, 64K to 1G (default 16M) |
 | `--dedup[=SIZE]` | remove long repeats up to SIZE back (default 256M); off by default |
-| `--no-dedup` | do not remove long repeats (the default) |
+| `--no-dedup` | disable repeat removal; the last `--dedup` or `--no-dedup` option wins |
 | `--memory SIZE` | memory budget, or `auto` (the default): half of physical memory, or 4G if that cannot be found |
 | `-v`, `--verbose` | report sizes on standard error |
 | `-q`, `--quiet` | suppress warnings |
@@ -96,20 +96,21 @@ still processed). If the reader of standard output goes away, as in
 
 ### Choosing a model
 
-| model | predicts each byte from | compress | decompress |
-|---|---|---:|---:|
-| `-4` (default) | many contexts, mixed (context mixing, the PAQ family) | 1.3 MB/s | 1.2 MB/s |
-| `-3` | the longest context that has seen it, up to 6 bytes (PPMd variant H) | 11.9 MB/s | 10.4 MB/s |
-| `-2` | the previous two bytes, one bit at a time | 33.6 MB/s | 22.2 MB/s |
-| `-1` | the previous byte | 24.4 MB/s | 22.1 MB/s |
-| `-0` | byte frequencies alone | 21.4 MB/s | 20.2 MB/s |
+| model | predicts each byte from |
+|---|---|
+| `-4` (default) | many contexts, mixed (context mixing, the PAQ family) |
+| `-3` | the longest context that has seen it, up to 6 bytes (PPMd variant H) |
+| `-2` | the previous two bytes, one bit at a time |
+| `-1` | the previous byte |
+| `-0` | byte frequencies alone |
 
-The speeds are input bytes per CPU second (decimal MB/s), for one
-Cortex-X925 core on the Silesia corpus (below). Level 3 uses the measured
-format-v10 PPMd-H implementation at `debc62e`; the other levels retain the
-format-v9 measurements of their unchanged model and coder. Blocks can be
-coded independently by multiple workers; actual scaling depends on the
-input size, memory budget, and machine.
+In release 0.5.0, level 3 is a safe-Rust translation of the PPMd-H model,
+memory allocator, and range coder in 7-Zip's `Ppmd7` implementation by
+Igor Pavlov, based on Dmitry Shkarin's PPMd. Its algorithms and data
+structures follow that implementation. The source credits both authors.
+
+Blocks can be coded independently by multiple workers; actual scaling
+depends on the input size, memory budget, and machine.
 
 At the default 16 MiB block size, each `-4` worker is allowed about 213
 MiB, so a 4 GiB budget admits 19 workers (a machine with 8 GiB of memory
@@ -135,67 +136,17 @@ Its effect depends on the input and the downstream model; it is off by
 default. At the default window it needs about 320 MiB more memory
 to compress and 290 MiB more to decompress. It works with every model.
 
-## Results
-
-### Silesia benchmark
-
-Level 3 uses the format-v10 PPMd-H run at `debc62e`. Other acz rows retain
-the format-v9 measurements; they were not retimed with this build. The
-original custom PPM measurements will accompany the technical report.
-
-The Silesia corpus (Sebastian Deorowicz, Silesian University of
-Technology, 2003) is a standard benchmark for compressors: 12 files,
-211,938,580 bytes in all, of the kinds of data people actually store:
-English and Polish text, a dictionary, XML, source code (samba), executable
-programs (mozilla, ooffice), a database (osdb), chemical structure data
-(nci), medical images (mr, x-ray) and star-catalogue data (sao).
-
-Each file was compressed separately, on one Cortex-X925 core with every
-program single-threaded, at the settings below. Memory use was not
-equalized. Times are user plus system CPU seconds for the whole corpus,
-the median of three runs. Every round trip was checked byte for byte.
-
-| program | how it compresses | bytes | % of input | compress | decompress |
-|---|---|---:|---:|---:|---:|
-| acz `-4` | context mixing, arithmetic coding | 42,764,432 | 20.18% | 164.07 s | 170.55 s |
-| acz `-4 --dedup` | the same, long repeats removed first | 42,796,316 | 20.19% | 156.43 s | 161.85 s |
-| xz 5.4.5 `-9` | LZ77 matches (LZMA2) with a binary range coder | 48,795,480 | 23.02% | 63.89 s | 1.60 s |
-| acz v10 `-3` | PPMd-H, byte-normalized range coding | 49,224,897 | 23.23% | 17.82 s | 20.33 s |
-| zstd 1.5.5 `-19` | LZ77 matches with Huffman and tabled ANS (FSE) codes | 53,024,529 | 25.02% | 60.52 s | 0.18 s |
-| bzip2 1.0.8 `-9` | Burrows–Wheeler transform with Huffman codes | 54,506,769 | 25.72% | 9.22 s | 3.96 s |
-| gzip 1.12 `-9` | LZ77 matches (Deflate) with Huffman codes | 67,631,918 | 31.91% | 11.37 s | 0.75 s |
-| acz `-2` | previous two bytes, arithmetic coding | 69,610,084 | 32.84% | 6.31 s | 9.55 s |
-| acz `-1` | previous byte, arithmetic coding | 94,356,023 | 44.52% | 8.69 s | 9.60 s |
-| acz `-0` | byte frequencies, arithmetic coding | 127,167,804 | 60.00% | 9.92 s | 10.48 s |
-
-The LZ77 programs decode fast because decoding mostly copies earlier
-output; acz's decoders must repeat every prediction the encoder made.
-
-acz `-4` is 12.4% smaller than xz `-9` in total and smaller on every file
-(by 3.7% on `sao` to 21% on `reymont`). It is 2.6 times slower to compress
-and about 100 times slower to decompress. PPMd-H `-3` produces 15.1% more
-bytes than `-4`, with 9.2 times its encoding throughput and 8.4 times its
-decoding throughput. It produces 7.2% fewer bytes than zstd `-19`.
-
-On the same core, 7-Zip 23.01 PPMd at order 6 and 256 MiB produces
-49,029,343 bytes in 15.77 CPU seconds and decodes in 16.90 seconds.
-The acz total is 0.4% larger. Both implement PPMd-H, but acz starts a fresh
-model every 16 MiB and sizes its arena from the block length, while 7-Zip
-codes each file as a single stream. The formats also have different overheads.
-
-The technical report and reproducibility data will be added after the
-remaining measurements and paper reviews are complete. They include input
-hashes, build identities, scripts, and measured rows, with earlier runs
-retained separately.
-A full-corpus size pilot of shorter copy thresholds found a small benefit
-for PPMd at 128 bytes but a size penalty for CM; the 256-byte threshold and
-disabled-by-default repeat stage remain unchanged.
-
 ### Record contexts
 
 Context mixing detects fixed-length records and predicts each byte from
 the corresponding positions in preceding records. These contexts are
-included in the current `-4` results above and require no additional option.
+enabled in `-4` and require no additional option.
+
+## Measurements
+
+Benchmark results are being revised. The technical report will present
+reviewed measurements with their exact implementation and format versions,
+input hashes, build identities, settings, scripts, and raw results.
 
 ## Using the library
 
