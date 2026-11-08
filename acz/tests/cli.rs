@@ -84,6 +84,32 @@ fn dedup_option_roundtrips() {
 }
 
 #[test]
+fn output_does_not_depend_on_the_thread_count() {
+    // About ten 64K blocks, the second half a copy of the first so that
+    // --dedup has repeats that reach back across blocks.
+    let mut data = sample();
+    let copy = data.clone();
+    data.extend_from_slice(&copy);
+    for m in ["-0", "-1", "-2", "-3", "-4"] {
+        for dedup in [None, Some("--dedup=1M")] {
+            let pack = |t: &str| {
+                // Keep the four-worker path independent of the host's auto budget.
+                let mut args = vec![m, t, "--block=64K", "--memory=2G"];
+                args.extend(dedup);
+                let c = run(ACZ, &args, &data);
+                assert!(c.status.success(), "{m} {t} {dedup:?}: {}", String::from_utf8_lossy(&c.stderr));
+                c.stdout
+            };
+            let one = pack("-T1");
+            assert_eq!(one, pack("-T4"), "{m} {dedup:?}");
+            let decoded = run(UNACZ, &["-T4", "--memory=2G"], &one);
+            assert!(decoded.status.success(), "{m} {dedup:?}: {}", String::from_utf8_lossy(&decoded.stderr));
+            assert_eq!(decoded.stdout, data, "{m} {dedup:?}");
+        }
+    }
+}
+
+#[test]
 fn empty_input() {
     let c = run(ACZ, &[], b"");
     assert!(c.status.success());
