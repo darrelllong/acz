@@ -1,0 +1,16 @@
+[workspace]
+resolver = "2"
+members = ["arith", "acz"]
+
+[workspace.package]
+version = "0.5.0"
+edition = "2021"
+license-file = "LICENSE"
+rust-version = "1.75"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[profile.release]
+lto = true
+codegen-units = 1

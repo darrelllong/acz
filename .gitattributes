@@ -1,0 +1,5 @@
+# Preserve the exact CSV-writer output retained as reference evidence.
+report/data/ppmd-reference-crosscheck.tsv -text whitespace=cr-at-eol
+# Keep working notes and image-editing records in the development repository.
+/NOTES.md export-ignore
+/docs/images/glen-langdon-restoration.txt export-ignore
