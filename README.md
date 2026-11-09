@@ -97,23 +97,31 @@ still processed). If the reader of standard output closes early, as in
 | model | predicts each byte from |
 |---|---|
 | `-4` (default) | a weighted combination of context-model predictions (context mixing) |
-| `-3` | contexts of up to 6 preceding bytes, with escape to shorter contexts (PPMd variant H) |
+| `-3` | contexts of up to 6 preceding bytes, with escape to shorter contexts (prediction by partial matching) |
 | `-2` | the previous two bytes, one bit at a time |
 | `-1` | the previous byte |
 | `-0` | byte frequencies alone |
 
-In release 0.5.0, level 3 is a safe-Rust translation of the PPMd-H model,
-memory allocator, and range coder in 7-Zip's `Ppmd7` implementation by
-Igor Pavlov, based on Dmitry Shkarin's PPMd. Its algorithms and data
-structures follow that implementation. The source credits both authors.
+Level 3 keeps its contexts in a trie stored in two arrays. Each symbol of
+a context points to the context that follows it, and each context points
+to the same context less its oldest byte. These links replace global
+context-table searches; after a restart, a short list matches the initial
+contexts to their incoming symbols. Release 0.5.0 used a translation of
+7-Zip's `Ppmd7` (by Igor Pavlov, after Dmitry Shkarin's PPMd) for level 3;
+that code has been removed. The current model uses binary escape classes,
+half-weight parent updates, information inheritance and a class-based escape
+frequency learner, based on Shkarin's published methods with the integer
+choices documented in `acz/src/ppm.rs`. Level 3 uses the multi-symbol range
+coder in `arith/src/multirange.rs`.
 
 At the default 16 MiB block size, memory planning budgets about 213 MiB
 per `-4` worker, so a 4 GiB budget admits 19 workers. For `-3` with multiple
-workers, it budgets about 320 MiB per worker (12 workers in 4 GiB),
-including queued block buffers.
-Its model uses an arena of 16 bytes per modeled input byte, clamped to
-1–256 MiB, plus its estimator tables and fixed state. With `--dedup`,
-the modeled input is the residual after copies are removed.
+workers, it budgets about 264 MiB per worker (15 workers in 4 GiB),
+including queued block buffers. Its model reserves at most 2^24 symbol
+slots of 8 bytes and about 6.3 million contexts of 12 bytes (about
+200 MiB), less for blocks of 512 KiB or smaller, and restarts when either
+is full.
+With `--dedup`, the modeled input is the residual after copies are removed.
 
 ### Long-repeat removal (`--dedup`)
 
@@ -139,9 +147,36 @@ enabled in `-4` and require no additional option.
 
 ## Measurements
 
-Benchmark results are being revised. The technical report will present
-reviewed measurements with their exact implementation and format versions,
-input hashes, build identities, settings, scripts, and raw results.
+Silesia corpus: twelve files, 211,938,580 bytes, each compressed separately
+on one Cortex-X925 core of an NVIDIA DGX Spark. Times are CPU seconds for
+the whole corpus, the median of three runs.
+
+| program | bytes | % of input | encode (s) | decode (s) |
+|---|---:|---:|---:|---:|
+| `acz -4` | 42,764,432 | 20.18 | 164.07 | 170.55 |
+| `xz -9` | 48,795,480 | 23.02 | 63.89 | 1.60 |
+| 7-Zip PPMd, order 6 | 49,029,343 | 23.13 | 15.77 | 16.90 |
+| `acz -3` | 50,601,960 | 23.88 | 21.64 | 23.56 |
+| `zstd -19` | 53,024,529 | 25.02 | 60.52 | 0.18 |
+| `bzip2 -9` | 54,506,769 | 25.72 | 9.22 | 3.96 |
+| `gzip -9` | 67,631,918 | 31.91 | 11.37 | 0.75 |
+| `acz -2` | 69,610,084 | 32.84 | 6.31 | 9.55 |
+| `acz -1` | 94,356,023 | 44.52 | 8.69 | 9.60 |
+| `acz -0` | 127,167,804 | 60.00 | 9.92 | 10.48 |
+
+Held-out collections: a sample of the U.S. Census Bureau's public data files
+and a sample of Backblaze's hard drive statistics, each file compressed whole
+with one thread. Sizes are percentages of input.
+
+| collection | files | input | `acz -4` | `xz -9` | `zstd -19` | `acz -3` |
+|---|---:|---:|---:|---:|---:|---:|
+| Census | 11,058 | 269.1 GB | 9.89 | 10.49 | 11.12 | 13.60 |
+| Backblaze | 688 | 248.3 GB | 8.40 | 8.76 | 9.13 | 10.61 |
+
+The [technical report](report/output/pdf/arith-acz-technical-report-draft.pdf)
+gives the per-file results and how they were measured; its
+[source and data](report/README.md) include the input hashes, builds,
+scripts and raw results.
 
 ## Using the library
 
@@ -189,9 +224,11 @@ Repeat removal and reconstruction run in stream order.
 The full specification is the documentation of
 [`acz/src/format.rs`](acz/src/format.rs).
 
-The current format is version 11. Format changes increment the version;
-the decoder rejects unsupported versions. Format compatibility is not
-guaranteed before release 1.0.
+The current format is version 13. Format changes increment the version;
+the decoder rejects unsupported versions, so files written by release 0.5.0
+(version 11), at any level, need that release to decode. Version 12 was
+never released. Format
+compatibility is not guaranteed before release 1.0.
 
 ## License
 

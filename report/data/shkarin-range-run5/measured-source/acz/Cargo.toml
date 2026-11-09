@@ -1,0 +1,13 @@
+[package]
+name = "acz"
+description = "File compressor/decompressor built on the `arith` arithmetic coder"
+version.workspace = true
+edition.workspace = true
+license-file.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+arith = { path = "../arith" }

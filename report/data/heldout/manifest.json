@@ -1,0 +1,14 @@
+{
+  "files": {
+    "backblaze-files.tsv": "f188413d7d5cb0ccb0ab3bcc072801f7181e5883cc0e3a7ee06b93809bec4d33",
+    "backblaze-main-v13.env": "7d050eec83b429b0bbbf610f0f5c2e3b68147f0b25f599a36a59e1922646fa72",
+    "backblaze-main.env": "40c256df5e390df11e5fc908f1a6fde991fbfa693d3d04cab664cb478a88c0af",
+    "census-files.tsv": "7bd7973c00b3c3c63716e8352d465c24301b9fa9c56d97498807c4d76e6646c1",
+    "census-main-v13.env": "7102acb11979ad20c68a1c885c654e393fab9aaf652d24cc1152c50f0c9f9c35",
+    "census-main.env": "07da6edecb89963218af52b40f507f4412329449c829652f32945d558602347d",
+    "heldout.sh": "ef034ac10cf8c82afed98e4e69cea8b4c972592a0c5290f98939685d4b764712",
+    "knuth-sources.sha256": "115dc90836dd8502eb9fdf068c769c38c1af11509e0d7a315b73531a904bd068",
+    "measure.sh": "81dc07350d60329fc7e458e0f5e6b73d4e80a174d41a5ac2e20715cd0337767d",
+    "reduce_heldout.py": "30f88bd978a786410225c01075ab11019dc77ba77ba14561017cbddf491ae103"
+  }
+}

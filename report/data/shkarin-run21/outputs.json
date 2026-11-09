@@ -1,0 +1,662 @@
+{
+  "./base/alice29.txt": {
+    "expected": "f7f627ddbf2389ce73bc4727dade111cda971946b1987d248973a82aaaff89b3",
+    "actual": "f7f627ddbf2389ce73bc4727dade111cda971946b1987d248973a82aaaff89b3",
+    "bytes": 42231
+  },
+  "./base/asyoulik.txt": {
+    "expected": "91b00f4a61a22bb77535ad927f4d98378a7f8a47b8f8cd7f19b373fbddb5e0a9",
+    "actual": "91b00f4a61a22bb77535ad927f4d98378a7f8a47b8f8cd7f19b373fbddb5e0a9",
+    "bytes": 39602
+  },
+  "./base/bib": {
+    "expected": "f1b4b45240f7c98f0d74e29bac6da4f821f39d413174c6b6e7426f6199fe4c1b",
+    "actual": "f1b4b45240f7c98f0d74e29bac6da4f821f39d413174c6b6e7426f6199fe4c1b",
+    "bytes": 25964
+  },
+  "./base/bible.txt": {
+    "expected": "2f13f02041d3e52bf33a280012ac5f1c1712846598fedf378f09084a7a45b767",
+    "actual": "2f13f02041d3e52bf33a280012ac5f1c1712846598fedf378f09084a7a45b767",
+    "bytes": 796146
+  },
+  "./base/book1": {
+    "expected": "8207e290067e13dc9290049848c3c00c227397ad956585a918980ea3d9f65e80",
+    "actual": "8207e290067e13dc9290049848c3c00c227397ad956585a918980ea3d9f65e80",
+    "bytes": 229492
+  },
+  "./base/book2": {
+    "expected": "43b6663b73444e48bbbf469b1c474fdafa45bf6a647be520c29de9d4787d58dd",
+    "actual": "43b6663b73444e48bbbf469b1c474fdafa45bf6a647be520c29de9d4787d58dd",
+    "bytes": 152955
+  },
+  "./base/cp.html": {
+    "expected": "91c42f602df27cf9bd49e76cae638322e6b8a51b6553ded57c8ed686748f52cc",
+    "actual": "91c42f602df27cf9bd49e76cae638322e6b8a51b6553ded57c8ed686748f52cc",
+    "bytes": 6913
+  },
+  "./base/E.coli": {
+    "expected": "0da1125ffce323054316453b17212405be5384ca7d8bb07bc33f5a802d1d1cce",
+    "actual": "0da1125ffce323054316453b17212405be5384ca7d8bb07bc33f5a802d1d1cce",
+    "bytes": 1129699
+  },
+  "./base/enwik8": {
+    "expected": "904ecd59d3fea735a05901994d5d2fe7d448716201dc3a795ad37bf6711d7466",
+    "actual": "904ecd59d3fea735a05901994d5d2fe7d448716201dc3a795ad37bf6711d7466",
+    "bytes": 25062588
+  },
+  "./base/fields.c": {
+    "expected": "b59a3177b8544050fc5101ee613bb4b9c10b77d8776eb76a0b63efa8d9d6b3b5",
+    "actual": "b59a3177b8544050fc5101ee613bb4b9c10b77d8776eb76a0b63efa8d9d6b3b5",
+    "bytes": 2767
+  },
+  "./base/geo": {
+    "expected": "0fc729655999ba88c19755320ce047fd8f1de0f293a0256c18d60b699c4a01ff",
+    "actual": "0fc729655999ba88c19755320ce047fd8f1de0f293a0256c18d60b699c4a01ff",
+    "bytes": 55660
+  },
+  "./base/grammar.lsp": {
+    "expected": "855aea5209a9869509c6a5f21b243a36f84d900379fb4191454bbc5c8066ed33",
+    "actual": "855aea5209a9869509c6a5f21b243a36f84d900379fb4191454bbc5c8066ed33",
+    "bytes": 1093
+  },
+  "./base/kennedy.xls": {
+    "expected": "6aac90e3d1f1684af5efdb8ab398a84469038de005dc85d4a00562a79aed30ff",
+    "actual": "6aac90e3d1f1684af5efdb8ab398a84469038de005dc85d4a00562a79aed30ff",
+    "bytes": 174581
+  },
+  "./base/lcet10.txt": {
+    "expected": "5000349339cb7311340cfe97e8d79b3dd9f3c1b761996d7ce9b306d19561c685",
+    "actual": "5000349339cb7311340cfe97e8d79b3dd9f3c1b761996d7ce9b306d19561c685",
+    "bytes": 105183
+  },
+  "./base/news": {
+    "expected": "b33b54af78c257a5cdeea2aea3f2831f187304e04a37d688981b4b4b0f38abc4",
+    "actual": "b33b54af78c257a5cdeea2aea3f2831f187304e04a37d688981b4b4b0f38abc4",
+    "bytes": 112951
+  },
+  "./base/obj1": {
+    "expected": "a00f26c2e2ca1654dc5190506781fabf8727909cf740cc67586c6280e88cb826",
+    "actual": "a00f26c2e2ca1654dc5190506781fabf8727909cf740cc67586c6280e88cb826",
+    "bytes": 9994
+  },
+  "./base/obj2": {
+    "expected": "f5b17bb5dcd27751c32eff2e066c7acc41c65d5bbf3ec4ca9f4ee93917316375",
+    "actual": "f5b17bb5dcd27751c32eff2e066c7acc41c65d5bbf3ec4ca9f4ee93917316375",
+    "bytes": 74183
+  },
+  "./base/paper1": {
+    "expected": "37e215ab7987c220fee99fcf9e0ad75ce43cd61eafc25aedc51ddad2fe0df036",
+    "actual": "37e215ab7987c220fee99fcf9e0ad75ce43cd61eafc25aedc51ddad2fe0df036",
+    "bytes": 15724
+  },
+  "./base/paper2": {
+    "expected": "721672df2bd8754d55255c7465c60f24569bac2d36cbba8cef78d6eb09286458",
+    "actual": "721672df2bd8754d55255c7465c60f24569bac2d36cbba8cef78d6eb09286458",
+    "bytes": 24304
+  },
+  "./base/paper3": {
+    "expected": "9ab3273043f262ab3b1bf6cde02c3457d6934055b4e3df414158198f6c1eb33a",
+    "actual": "9ab3273043f262ab3b1bf6cde02c3457d6934055b4e3df414158198f6c1eb33a",
+    "bytes": 15325
+  },
+  "./base/paper4": {
+    "expected": "30f816e16963d2e4d46a2b170b75e383596b84fcacd4c63aa01eab8048a62756",
+    "actual": "30f816e16963d2e4d46a2b170b75e383596b84fcacd4c63aa01eab8048a62756",
+    "bytes": 4864
+  },
+  "./base/paper5": {
+    "expected": "76df51eb0261004165cc53f00e846124181f99a5625955da82fad23ff84d4739",
+    "actual": "76df51eb0261004165cc53f00e846124181f99a5625955da82fad23ff84d4739",
+    "bytes": 4491
+  },
+  "./base/paper6": {
+    "expected": "341f1fb4e38ed059e65dc35adc80a0ab402b5af225bafd1448a111921874bce5",
+    "actual": "341f1fb4e38ed059e65dc35adc80a0ab402b5af225bafd1448a111921874bce5",
+    "bytes": 11590
+  },
+  "./base/pic": {
+    "expected": "2c155cb65bca5027611f5f260ad52ce26674dd7724d95efaa0f03a27c673312d",
+    "actual": "2c155cb65bca5027611f5f260ad52ce26674dd7724d95efaa0f03a27c673312d",
+    "bytes": 50827
+  },
+  "./base/plrabn12.txt": {
+    "expected": "40954e85546f3b49a47bf37a0ae3b23f3abcd6fe8f18c406e552f7c7aef9bd0e",
+    "actual": "40954e85546f3b49a47bf37a0ae3b23f3abcd6fe8f18c406e552f7c7aef9bd0e",
+    "bytes": 144325
+  },
+  "./base/progc": {
+    "expected": "5ee81682cf047c8f09416f7e1f137590255160f3a21e234cf2aa398595c84bf2",
+    "actual": "5ee81682cf047c8f09416f7e1f137590255160f3a21e234cf2aa398595c84bf2",
+    "bytes": 11782
+  },
+  "./base/progl": {
+    "expected": "842cce1cf63a8bcc4895480326792884f4c810ae8607aea6aed26fa2c012253d",
+    "actual": "842cce1cf63a8bcc4895480326792884f4c810ae8607aea6aed26fa2c012253d",
+    "bytes": 14623
+  },
+  "./base/progp": {
+    "expected": "54c06a53d2c5918848e8d62335266f8c7ff620e30496de5a9442d51d27f52fbf",
+    "actual": "54c06a53d2c5918848e8d62335266f8c7ff620e30496de5a9442d51d27f52fbf",
+    "bytes": 10170
+  },
+  "./base/ptt5": {
+    "expected": "2c155cb65bca5027611f5f260ad52ce26674dd7724d95efaa0f03a27c673312d",
+    "actual": "2c155cb65bca5027611f5f260ad52ce26674dd7724d95efaa0f03a27c673312d",
+    "bytes": 50827
+  },
+  "./base/sum": {
+    "expected": "9a54457bb7963bdb625e0a534dddb73e5010c088423e5afd61030e5ad65e986f",
+    "actual": "9a54457bb7963bdb625e0a534dddb73e5010c088423e5afd61030e5ad65e986f",
+    "bytes": 12352
+  },
+  "./base/trans": {
+    "expected": "b7107ab140f87145b89390e0f5d3445d6c948fbf28b99909322bdd4764731d8c",
+    "actual": "b7107ab140f87145b89390e0f5d3445d6c948fbf28b99909322bdd4764731d8c",
+    "bytes": 15990
+  },
+  "./base/world192.txt": {
+    "expected": "414512246a7f3ea639262db18259e4fca7c34fb6bf889b0b045bfeb5a8bbea00",
+    "actual": "414512246a7f3ea639262db18259e4fca7c34fb6bf889b0b045bfeb5a8bbea00",
+    "bytes": 452597
+  },
+  "./base/xargs.1": {
+    "expected": "824b13bc4d8fa518402f42f163394352bcdbbe0c2e4afa1af1cfa6f39be4f433",
+    "actual": "824b13bc4d8fa518402f42f163394352bcdbbe0c2e4afa1af1cfa6f39be4f433",
+    "bytes": 1554
+  },
+  "./bin6+par+inh+seef+inhd/alice29.txt": {
+    "expected": "73a134ddc86d1eefcaae47ae22f64bd15aa902dd29494c173c731daeca84bec0",
+    "actual": "73a134ddc86d1eefcaae47ae22f64bd15aa902dd29494c173c731daeca84bec0",
+    "bytes": 39442
+  },
+  "./bin6+par+inh+seef+inhd/asyoulik.txt": {
+    "expected": "6466e1a57f35a8278beb9b4b407ee49759c6af94cebf472d2e369e1bc0964c28",
+    "actual": "6466e1a57f35a8278beb9b4b407ee49759c6af94cebf472d2e369e1bc0964c28",
+    "bytes": 36719
+  },
+  "./bin6+par+inh+seef+inhd/bib": {
+    "expected": "8fe6176737dd19e2c2f3b785300a64431d2cda2efd039054c30af36e8e44eb4e",
+    "actual": "8fe6176737dd19e2c2f3b785300a64431d2cda2efd039054c30af36e8e44eb4e",
+    "bytes": 24627
+  },
+  "./bin6+par+inh+seef+inhd/bible.txt": {
+    "expected": "001ea96edf959196b01598d2a0a5de064ee7e06bb66659973b0f923d2e9a1680",
+    "actual": "001ea96edf959196b01598d2a0a5de064ee7e06bb66659973b0f923d2e9a1680",
+    "bytes": 766581
+  },
+  "./bin6+par+inh+seef+inhd/book1": {
+    "expected": "e73d29670b3af7adc6a11cc8af8a3f2bcf618289996f7e94f77f24e00cce89c2",
+    "actual": "e73d29670b3af7adc6a11cc8af8a3f2bcf618289996f7e94f77f24e00cce89c2",
+    "bytes": 213112
+  },
+  "./bin6+par+inh+seef+inhd/book2": {
+    "expected": "0c8aa36b914fd6843b17757fc04006415dc19d3f462b69ee9c084bb24f7b0186",
+    "actual": "0c8aa36b914fd6843b17757fc04006415dc19d3f462b69ee9c084bb24f7b0186",
+    "bytes": 143543
+  },
+  "./bin6+par+inh+seef+inhd/cp.html": {
+    "expected": "a209666098d5a1b6b79109084b401f138c92cbc380de40b609ea0073bcbf7aac",
+    "actual": "a209666098d5a1b6b79109084b401f138c92cbc380de40b609ea0073bcbf7aac",
+    "bytes": 6732
+  },
+  "./bin6+par+inh+seef+inhd/E.coli": {
+    "expected": "862456c6b2a864b4593a94dc13993c73564951ca0f7a8e97f12a778474228c6f",
+    "actual": "862456c6b2a864b4593a94dc13993c73564951ca0f7a8e97f12a778474228c6f",
+    "bytes": 1128790
+  },
+  "./bin6+par+inh+seef+inhd+ee1/alice29.txt": {
+    "expected": "65e48fbabed3053168de4e2a7c1143f30a29534ae8229c31aed6ee0dc4193d4c",
+    "actual": "65e48fbabed3053168de4e2a7c1143f30a29534ae8229c31aed6ee0dc4193d4c",
+    "bytes": 39532
+  },
+  "./bin6+par+inh+seef+inhd+ee1/asyoulik.txt": {
+    "expected": "07ce58e63af40b101bdccdd83c47e15e5736669355e067566d0653b3ecab5344",
+    "actual": "07ce58e63af40b101bdccdd83c47e15e5736669355e067566d0653b3ecab5344",
+    "bytes": 36881
+  },
+  "./bin6+par+inh+seef+inhd+ee1/bib": {
+    "expected": "0f91cd23d6d9ba0566ec4135b752d95852905e4057a80a6e480ffa32e45182db",
+    "actual": "0f91cd23d6d9ba0566ec4135b752d95852905e4057a80a6e480ffa32e45182db",
+    "bytes": 24718
+  },
+  "./bin6+par+inh+seef+inhd+ee1/bible.txt": {
+    "expected": "457174acb52f695c98778063aa72e197cab0329db84c96679a57eb068eb25bdd",
+    "actual": "457174acb52f695c98778063aa72e197cab0329db84c96679a57eb068eb25bdd",
+    "bytes": 766685
+  },
+  "./bin6+par+inh+seef+inhd+ee1/book1": {
+    "expected": "7ca8f13a223ccdde813733e88e7ac3fe74f38cbf2a59051765d953218e87d2b6",
+    "actual": "7ca8f13a223ccdde813733e88e7ac3fe74f38cbf2a59051765d953218e87d2b6",
+    "bytes": 214254
+  },
+  "./bin6+par+inh+seef+inhd+ee1/book2": {
+    "expected": "a979461d6e3539abcb64e1aa2bb5247a1b6938c6a995a20984dd5bfc2d8853e7",
+    "actual": "a979461d6e3539abcb64e1aa2bb5247a1b6938c6a995a20984dd5bfc2d8853e7",
+    "bytes": 144060
+  },
+  "./bin6+par+inh+seef+inhd+ee1/cp.html": {
+    "expected": "1f91a2296dc3d08161f01c56834cfdf2b471e682c6b0408ab724a062bb0f6a7d",
+    "actual": "1f91a2296dc3d08161f01c56834cfdf2b471e682c6b0408ab724a062bb0f6a7d",
+    "bytes": 6760
+  },
+  "./bin6+par+inh+seef+inhd+ee1/E.coli": {
+    "expected": "9f9e8279597adbd7ad4d0540af70cb247bbfb56c2c8e3e7a57e0a15328046e9f",
+    "actual": "9f9e8279597adbd7ad4d0540af70cb247bbfb56c2c8e3e7a57e0a15328046e9f",
+    "bytes": 1134826
+  },
+  "./bin6+par+inh+seef+inhd+ee1/enwik8": {
+    "expected": "17b8625864d89914d6d8916fdd95b8c5fe6670ede99b242a4ac62268cb78e96b",
+    "actual": "17b8625864d89914d6d8916fdd95b8c5fe6670ede99b242a4ac62268cb78e96b",
+    "bytes": 23826356
+  },
+  "./bin6+par+inh+seef+inhd+ee1/fields.c": {
+    "expected": "277198b590c30af3f3a11668ac53412e6f7f3073961b4e7a7a331299986022cd",
+    "actual": "277198b590c30af3f3a11668ac53412e6f7f3073961b4e7a7a331299986022cd",
+    "bytes": 2718
+  },
+  "./bin6+par+inh+seef+inhd+ee1/geo": {
+    "expected": "b9c03af32ee3fb1f3d9cb502d57e769c7968750610611b174097c8463fa5d180",
+    "actual": "b9c03af32ee3fb1f3d9cb502d57e769c7968750610611b174097c8463fa5d180",
+    "bytes": 56804
+  },
+  "./bin6+par+inh+seef+inhd+ee1/grammar.lsp": {
+    "expected": "efbedcf29ad7bec06ba0afd2bdba432695ace59345c82dd26e4f7a8f705f690f",
+    "actual": "efbedcf29ad7bec06ba0afd2bdba432695ace59345c82dd26e4f7a8f705f690f",
+    "bytes": 1076
+  },
+  "./bin6+par+inh+seef+inhd+ee1/kennedy.xls": {
+    "expected": "157077584afff3a978df87200cb48000c77756dccf841eb8aca8a7aea4d76f9b",
+    "actual": "157077584afff3a978df87200cb48000c77756dccf841eb8aca8a7aea4d76f9b",
+    "bytes": 168898
+  },
+  "./bin6+par+inh+seef+inhd+ee1/lcet10.txt": {
+    "expected": "0f05289bcede04015fb2ff755aeb9794765b207324c446504f23a251fa3d5ffe",
+    "actual": "0f05289bcede04015fb2ff755aeb9794765b207324c446504f23a251fa3d5ffe",
+    "bytes": 98251
+  },
+  "./bin6+par+inh+seef+inhd+ee1/news": {
+    "expected": "7461ec57302840bd46a36f139071eae485e26e104dda1147077b8047b6ba83bb",
+    "actual": "7461ec57302840bd46a36f139071eae485e26e104dda1147077b8047b6ba83bb",
+    "bytes": 106584
+  },
+  "./bin6+par+inh+seef+inhd+ee1/obj1": {
+    "expected": "bee7f78dd2c72f5a6effab248a800b7e6710bd195875e30bc55c58fddd34234d",
+    "actual": "bee7f78dd2c72f5a6effab248a800b7e6710bd195875e30bc55c58fddd34234d",
+    "bytes": 9914
+  },
+  "./bin6+par+inh+seef+inhd+ee1/obj2": {
+    "expected": "24495505377a0a7e51ed7bb208e48eb07582c4906496c30b760a714c2f3dbb54",
+    "actual": "24495505377a0a7e51ed7bb208e48eb07582c4906496c30b760a714c2f3dbb54",
+    "bytes": 71786
+  },
+  "./bin6+par+inh+seef+inhd+ee1/paper1": {
+    "expected": "be23668a4f8f49fe321a44029e049389e55ed00e943efd3573fb813274b5d8cf",
+    "actual": "be23668a4f8f49fe321a44029e049389e55ed00e943efd3573fb813274b5d8cf",
+    "bytes": 14921
+  },
+  "./bin6+par+inh+seef+inhd+ee1/paper2": {
+    "expected": "2fb43a1ac90900cc3cba0b94491eb7e6c68b07440befed246febf6e27637930a",
+    "actual": "2fb43a1ac90900cc3cba0b94491eb7e6c68b07440befed246febf6e27637930a",
+    "bytes": 22830
+  },
+  "./bin6+par+inh+seef+inhd+ee1/paper3": {
+    "expected": "49dd994b00835497eb941e8c1f8c47d73cfd84dccb127c383a5e9d4fddc497c0",
+    "actual": "49dd994b00835497eb941e8c1f8c47d73cfd84dccb127c383a5e9d4fddc497c0",
+    "bytes": 14470
+  },
+  "./bin6+par+inh+seef+inhd+ee1/paper4": {
+    "expected": "cd49ce2ed1ebd4e8fca2b7de7d77f642c146001f1baca960df1e494ddbf460bb",
+    "actual": "cd49ce2ed1ebd4e8fca2b7de7d77f642c146001f1baca960df1e494ddbf460bb",
+    "bytes": 4687
+  },
+  "./bin6+par+inh+seef+inhd+ee1/paper5": {
+    "expected": "6e23ff3ad51997f03d81d121e2ae988f12dd7c60b62cb39746960062f3bdf753",
+    "actual": "6e23ff3ad51997f03d81d121e2ae988f12dd7c60b62cb39746960062f3bdf753",
+    "bytes": 4352
+  },
+  "./bin6+par+inh+seef+inhd+ee1/paper6": {
+    "expected": "57a862f30b772b6fe82053fdb0f66b6bc3b6308ae057ba4a435bb1e7ce224bce",
+    "actual": "57a862f30b772b6fe82053fdb0f66b6bc3b6308ae057ba4a435bb1e7ce224bce",
+    "bytes": 11068
+  },
+  "./bin6+par+inh+seef+inhd+ee1/pic": {
+    "expected": "3a31a04e267ab1f3baebab2b2bbd1687f4eb557d63a7405c257acf61445393b5",
+    "actual": "3a31a04e267ab1f3baebab2b2bbd1687f4eb557d63a7405c257acf61445393b5",
+    "bytes": 49853
+  },
+  "./bin6+par+inh+seef+inhd+ee1/plrabn12.txt": {
+    "expected": "b51d3125a88dcd4c45355c72d47811d03dd7fbde8ccf42d0fffead11f7ccbfdc",
+    "actual": "b51d3125a88dcd4c45355c72d47811d03dd7fbde8ccf42d0fffead11f7ccbfdc",
+    "bytes": 135386
+  },
+  "./bin6+par+inh+seef+inhd+ee1/progc": {
+    "expected": "bcf19efbcd5bc3a433f6e4122bf1ba04b60c742a62e81b3d8dcaecc2406d262c",
+    "actual": "bcf19efbcd5bc3a433f6e4122bf1ba04b60c742a62e81b3d8dcaecc2406d262c",
+    "bytes": 11273
+  },
+  "./bin6+par+inh+seef+inhd+ee1/progl": {
+    "expected": "df7e0c579e5b403d1a6ad877edc6962cbae4e2cdab283033a414e6632803dd51",
+    "actual": "df7e0c579e5b403d1a6ad877edc6962cbae4e2cdab283033a414e6632803dd51",
+    "bytes": 14091
+  },
+  "./bin6+par+inh+seef+inhd+ee1/progp": {
+    "expected": "00b0a05852c5adc136d765f6d04fd4bc214d47559cd32f3f58610dac26f08823",
+    "actual": "00b0a05852c5adc136d765f6d04fd4bc214d47559cd32f3f58610dac26f08823",
+    "bytes": 9941
+  },
+  "./bin6+par+inh+seef+inhd+ee1/ptt5": {
+    "expected": "3a31a04e267ab1f3baebab2b2bbd1687f4eb557d63a7405c257acf61445393b5",
+    "actual": "3a31a04e267ab1f3baebab2b2bbd1687f4eb557d63a7405c257acf61445393b5",
+    "bytes": 49853
+  },
+  "./bin6+par+inh+seef+inhd+ee1/sum": {
+    "expected": "90f55ad0bd3cd0da3ddb90855b721466f821cb397aa20abe48c771576859baab",
+    "actual": "90f55ad0bd3cd0da3ddb90855b721466f821cb397aa20abe48c771576859baab",
+    "bytes": 12289
+  },
+  "./bin6+par+inh+seef+inhd+ee1/trans": {
+    "expected": "2e805fa2209b97be6ac9dc7684d76a7e775872e00f50aa3d367183d035469a50",
+    "actual": "2e805fa2209b97be6ac9dc7684d76a7e775872e00f50aa3d367183d035469a50",
+    "bytes": 15752
+  },
+  "./bin6+par+inh+seef+inhd+ee1/world192.txt": {
+    "expected": "1a8c790b999682040fb5fe3b300ae8f7c87285c2d2c3248c3094eaef8abddd86",
+    "actual": "1a8c790b999682040fb5fe3b300ae8f7c87285c2d2c3248c3094eaef8abddd86",
+    "bytes": 426596
+  },
+  "./bin6+par+inh+seef+inhd+ee1/xargs.1": {
+    "expected": "098a7ee9f548d8e911da965b709a2f1434ac29ab337302a996a4b3ed74dffad3",
+    "actual": "098a7ee9f548d8e911da965b709a2f1434ac29ab337302a996a4b3ed74dffad3",
+    "bytes": 1528
+  },
+  "./bin6+par+inh+seef+inhd/enwik8": {
+    "expected": "687dc1144c879c83f55be7c4276466fc818b6f2dc33de43b336ce320df495c0d",
+    "actual": "687dc1144c879c83f55be7c4276466fc818b6f2dc33de43b336ce320df495c0d",
+    "bytes": 23855086
+  },
+  "./bin6+par+inh+seef+inhd/fields.c": {
+    "expected": "4c2d0ebbc6b62c15b40b8df7107cbc7942c4eca1590f229c3df2dd771f8ffe35",
+    "actual": "4c2d0ebbc6b62c15b40b8df7107cbc7942c4eca1590f229c3df2dd771f8ffe35",
+    "bytes": 2705
+  },
+  "./bin6+par+inh+seef+inhd/geo": {
+    "expected": "ac6e18ce4420fe492d11125abaaefff1f756c4d666eb798b94a13f0ff1db34e1",
+    "actual": "ac6e18ce4420fe492d11125abaaefff1f756c4d666eb798b94a13f0ff1db34e1",
+    "bytes": 56683
+  },
+  "./bin6+par+inh+seef+inhd/grammar.lsp": {
+    "expected": "9c5310257b230a50a19deb4a7e537b8708cd25cb58bdc2ed19e8b1a90004ea2b",
+    "actual": "9c5310257b230a50a19deb4a7e537b8708cd25cb58bdc2ed19e8b1a90004ea2b",
+    "bytes": 1075
+  },
+  "./bin6+par+inh+seef+inhd/kennedy.xls": {
+    "expected": "344cbd7effc74bbd3b9837ac7a7fa836653ea7853493dcfe75f8d61507f6e40c",
+    "actual": "344cbd7effc74bbd3b9837ac7a7fa836653ea7853493dcfe75f8d61507f6e40c",
+    "bytes": 164549
+  },
+  "./bin6+par+inh+seef+inhd/lcet10.txt": {
+    "expected": "d1678c0167551c9bcfa507365d64207546cfd2beb35fd8421d3960710d0eb9e5",
+    "actual": "d1678c0167551c9bcfa507365d64207546cfd2beb35fd8421d3960710d0eb9e5",
+    "bytes": 97948
+  },
+  "./bin6+par+inh+seef+inhd/news": {
+    "expected": "f8e1ae5f65dff36df7948036c9de54472423efff94c101e2f905d8211f9500b2",
+    "actual": "f8e1ae5f65dff36df7948036c9de54472423efff94c101e2f905d8211f9500b2",
+    "bytes": 106306
+  },
+  "./bin6+par+inh+seef+inhd/obj1": {
+    "expected": "f5201a1c929a47bbec64e33997c3c8d50dd293052ed9157283a9e2e4224fac36",
+    "actual": "f5201a1c929a47bbec64e33997c3c8d50dd293052ed9157283a9e2e4224fac36",
+    "bytes": 9875
+  },
+  "./bin6+par+inh+seef+inhd/obj2": {
+    "expected": "00c26ef45bd4a4f209848e0838f3dd2529344032ad943d00e4bf638de032e0dd",
+    "actual": "00c26ef45bd4a4f209848e0838f3dd2529344032ad943d00e4bf638de032e0dd",
+    "bytes": 71594
+  },
+  "./bin6+par+inh+seef+inhd/paper1": {
+    "expected": "a9d1574301c54a360d9a6c96443b4e5111e7f7c0b76eb215bb7aeb2c76645f82",
+    "actual": "a9d1574301c54a360d9a6c96443b4e5111e7f7c0b76eb215bb7aeb2c76645f82",
+    "bytes": 14850
+  },
+  "./bin6+par+inh+seef+inhd/paper2": {
+    "expected": "a2adb3ab38770bdc115c1dbbb20fa673ac67edb0137a01b2e05bb5e85185136b",
+    "actual": "a2adb3ab38770bdc115c1dbbb20fa673ac67edb0137a01b2e05bb5e85185136b",
+    "bytes": 22685
+  },
+  "./bin6+par+inh+seef+inhd/paper3": {
+    "expected": "1f32d45e483e47e6184fd2cb95879bf517dd3dcbe6691526489460d6ab0aa9a9",
+    "actual": "1f32d45e483e47e6184fd2cb95879bf517dd3dcbe6691526489460d6ab0aa9a9",
+    "bytes": 14400
+  },
+  "./bin6+par+inh+seef+inhd/paper4": {
+    "expected": "08d830e3ebad1143a72a97135b181f903bfdd1682d43c8018f3219f43466d244",
+    "actual": "08d830e3ebad1143a72a97135b181f903bfdd1682d43c8018f3219f43466d244",
+    "bytes": 4652
+  },
+  "./bin6+par+inh+seef+inhd/paper5": {
+    "expected": "9c599cc693909c078ba5a8caa04e0c0088e3997b2fd129a9f8ae570f73c01df2",
+    "actual": "9c599cc693909c078ba5a8caa04e0c0088e3997b2fd129a9f8ae570f73c01df2",
+    "bytes": 4325
+  },
+  "./bin6+par+inh+seef+inhd/paper6": {
+    "expected": "b932ca6b993d36b6ae423514fc19c9e582cc340d758a94062c95fa56f6c6f299",
+    "actual": "b932ca6b993d36b6ae423514fc19c9e582cc340d758a94062c95fa56f6c6f299",
+    "bytes": 11020
+  },
+  "./bin6+par+inh+seef+inhd/pic": {
+    "expected": "72c27a8ee20cfb02f6918d1ea98b87a7815887bdab570820618fe154346dc879",
+    "actual": "72c27a8ee20cfb02f6918d1ea98b87a7815887bdab570820618fe154346dc879",
+    "bytes": 49750
+  },
+  "./bin6+par+inh+seef+inhd/plrabn12.txt": {
+    "expected": "7e9f00f3fee7c3567462506da4b8fa0faaebc7606021da7b88bb5f0240ce1357",
+    "actual": "7e9f00f3fee7c3567462506da4b8fa0faaebc7606021da7b88bb5f0240ce1357",
+    "bytes": 134386
+  },
+  "./bin6+par+inh+seef+inhd/progc": {
+    "expected": "e62e1b6644c4b07ef206dc194a2047b7f8a5a8f91579eaabcf2988539c260ada",
+    "actual": "e62e1b6644c4b07ef206dc194a2047b7f8a5a8f91579eaabcf2988539c260ada",
+    "bytes": 11227
+  },
+  "./bin6+par+inh+seef+inhd/progl": {
+    "expected": "fa279012d3f03411327294d7a86add89dee13f2530710084ae6329a2009bc89d",
+    "actual": "fa279012d3f03411327294d7a86add89dee13f2530710084ae6329a2009bc89d",
+    "bytes": 14069
+  },
+  "./bin6+par+inh+seef+inhd/progp": {
+    "expected": "b76bfd218db94e0ada584b0cf69cfdfa27646d957ab243e1f2d8aeb442b6d531",
+    "actual": "b76bfd218db94e0ada584b0cf69cfdfa27646d957ab243e1f2d8aeb442b6d531",
+    "bytes": 9938
+  },
+  "./bin6+par+inh+seef+inhd/ptt5": {
+    "expected": "72c27a8ee20cfb02f6918d1ea98b87a7815887bdab570820618fe154346dc879",
+    "actual": "72c27a8ee20cfb02f6918d1ea98b87a7815887bdab570820618fe154346dc879",
+    "bytes": 49750
+  },
+  "./bin6+par+inh+seef+inhd/sum": {
+    "expected": "ac4cd8d67e920a2246c3e2ce5f8d2ccb6b29b4658d7585bb7461e5368fb47b4e",
+    "actual": "ac4cd8d67e920a2246c3e2ce5f8d2ccb6b29b4658d7585bb7461e5368fb47b4e",
+    "bytes": 12228
+  },
+  "./bin6+par+inh+seef+inhd/trans": {
+    "expected": "2e0e18ed8d07bad77da8f677bd4e092a53ef42c6a93346e1506144946e4168ef",
+    "actual": "2e0e18ed8d07bad77da8f677bd4e092a53ef42c6a93346e1506144946e4168ef",
+    "bytes": 15721
+  },
+  "./bin6+par+inh+seef+inhd/world192.txt": {
+    "expected": "f07ef395662be6a21d8c2fcbc339ee177c6adcd28c6c13e898c1d9e33d3344db",
+    "actual": "f07ef395662be6a21d8c2fcbc339ee177c6adcd28c6c13e898c1d9e33d3344db",
+    "bytes": 426892
+  },
+  "./bin6+par+inh+seef+inhd/xargs.1": {
+    "expected": "eb286074e262bbb41c60b4439c0b2f291ef4ba8ebe987aa55002cc67362d6f66",
+    "actual": "eb286074e262bbb41c60b4439c0b2f291ef4ba8ebe987aa55002cc67362d6f66",
+    "bytes": 1520
+  },
+  "./ee1/alice29.txt": {
+    "expected": "14b457220f611a196b1c346c1f2bc4b0b3a7a4748d1562403b0ad52983f72ea4",
+    "actual": "14b457220f611a196b1c346c1f2bc4b0b3a7a4748d1562403b0ad52983f72ea4",
+    "bytes": 41455
+  },
+  "./ee1/asyoulik.txt": {
+    "expected": "a142c84d35d4459b0fd5d89092fe37fd81f3dfd434ab31951ea8fee2e18fbf78",
+    "actual": "a142c84d35d4459b0fd5d89092fe37fd81f3dfd434ab31951ea8fee2e18fbf78",
+    "bytes": 38920
+  },
+  "./ee1/bib": {
+    "expected": "2e462389637d1b61a1044275e9cfc7ff852e79e84a297c4ea2dcb6144b87d450",
+    "actual": "2e462389637d1b61a1044275e9cfc7ff852e79e84a297c4ea2dcb6144b87d450",
+    "bytes": 25410
+  },
+  "./ee1/bible.txt": {
+    "expected": "0da2d9e0d036a6c5db121c9bde90f2f52e8f5587b8d7e97116e57436a3f60ec5",
+    "actual": "0da2d9e0d036a6c5db121c9bde90f2f52e8f5587b8d7e97116e57436a3f60ec5",
+    "bytes": 783113
+  },
+  "./ee1/book1": {
+    "expected": "783e3cbd27e0587f7357d21fa65379a1d76bf20bc3d33c5a84444198b054f6eb",
+    "actual": "783e3cbd27e0587f7357d21fa65379a1d76bf20bc3d33c5a84444198b054f6eb",
+    "bytes": 224201
+  },
+  "./ee1/book2": {
+    "expected": "0e46f55e4d957087373a52bcc527ce7a0f856dc027d86fe387f4b6881b06b52b",
+    "actual": "0e46f55e4d957087373a52bcc527ce7a0f856dc027d86fe387f4b6881b06b52b",
+    "bytes": 149851
+  },
+  "./ee1/cp.html": {
+    "expected": "7b2bf8e43cbd4c1694da8e05463de810f89ca974c5696a57720799c780e9235f",
+    "actual": "7b2bf8e43cbd4c1694da8e05463de810f89ca974c5696a57720799c780e9235f",
+    "bytes": 6821
+  },
+  "./ee1/E.coli": {
+    "expected": "99c857c84e635d2700fa5aaaf73ff96788ea16bbddec9442f1c63b7eba72bbf4",
+    "actual": "99c857c84e635d2700fa5aaaf73ff96788ea16bbddec9442f1c63b7eba72bbf4",
+    "bytes": 1138114
+  },
+  "./ee1/enwik8": {
+    "expected": "9ffb458b1ea06bf6849668e03006111a621b1ed5275ea9b35755dfaf149e890f",
+    "actual": "9ffb458b1ea06bf6849668e03006111a621b1ed5275ea9b35755dfaf149e890f",
+    "bytes": 24438679
+  },
+  "./ee1/fields.c": {
+    "expected": "c99fac08f5b972c11950102a0384c06423e8b6ce06295d19e0d174978cb2c3e9",
+    "actual": "c99fac08f5b972c11950102a0384c06423e8b6ce06295d19e0d174978cb2c3e9",
+    "bytes": 2732
+  },
+  "./ee1/geo": {
+    "expected": "2f42cb64303ffed941b24bf5f86b09abb7afc60e5bef49b31368bb94c5c0d688",
+    "actual": "2f42cb64303ffed941b24bf5f86b09abb7afc60e5bef49b31368bb94c5c0d688",
+    "bytes": 56095
+  },
+  "./ee1/grammar.lsp": {
+    "expected": "d846a6b585c36037f70c8ee0b57bc561bd48bf3d755f2dec3507db0cc5f6377f",
+    "actual": "d846a6b585c36037f70c8ee0b57bc561bd48bf3d755f2dec3507db0cc5f6377f",
+    "bytes": 1078
+  },
+  "./ee1/kennedy.xls": {
+    "expected": "2d1f85a881be70664d99431638faba33c0c8a226718935481e65002da228a981",
+    "actual": "2d1f85a881be70664d99431638faba33c0c8a226718935481e65002da228a981",
+    "bytes": 175578
+  },
+  "./ee1/lcet10.txt": {
+    "expected": "37b3eb91b097e160dccf4d8ad3dc109c9551fe847710cb7292eb6bac00d28d11",
+    "actual": "37b3eb91b097e160dccf4d8ad3dc109c9551fe847710cb7292eb6bac00d28d11",
+    "bytes": 102752
+  },
+  "./ee1/news": {
+    "expected": "5c87a9a6f040d60c7702b9cc6ed3559c95dfc624a80ab4164141753ea13a4c94",
+    "actual": "5c87a9a6f040d60c7702b9cc6ed3559c95dfc624a80ab4164141753ea13a4c94",
+    "bytes": 110750
+  },
+  "./ee1/obj1": {
+    "expected": "5fc4b6cb4fba0e4a00c541ae82e6cc67ebcc27bbc5c72332bf1de9eb817aec0a",
+    "actual": "5fc4b6cb4fba0e4a00c541ae82e6cc67ebcc27bbc5c72332bf1de9eb817aec0a",
+    "bytes": 9884
+  },
+  "./ee1/obj2": {
+    "expected": "5ece68ab247bd86a16ed50d637232b298ad8ee8cc1cb426542d9dd262121fc0b",
+    "actual": "5ece68ab247bd86a16ed50d637232b298ad8ee8cc1cb426542d9dd262121fc0b",
+    "bytes": 72989
+  },
+  "./ee1/paper1": {
+    "expected": "5409567093c4eac9ab1d7660309271c4d4b3ec7f5961909dea24cbad07456e3e",
+    "actual": "5409567093c4eac9ab1d7660309271c4d4b3ec7f5961909dea24cbad07456e3e",
+    "bytes": 15485
+  },
+  "./ee1/paper2": {
+    "expected": "5e1d3e56692263252af24463ad199a5ce30a550c44a6e3fa7164f8f810bfdd5f",
+    "actual": "5e1d3e56692263252af24463ad199a5ce30a550c44a6e3fa7164f8f810bfdd5f",
+    "bytes": 23941
+  },
+  "./ee1/paper3": {
+    "expected": "167b335501adf2a4091368a228e753477471de33bba5a37d046f9ce8823f35b9",
+    "actual": "167b335501adf2a4091368a228e753477471de33bba5a37d046f9ce8823f35b9",
+    "bytes": 15108
+  },
+  "./ee1/paper4": {
+    "expected": "92e9ee6a71db78992fd767a88417f5313d8c015553a5619ce956a380ce26e2cc",
+    "actual": "92e9ee6a71db78992fd767a88417f5313d8c015553a5619ce956a380ce26e2cc",
+    "bytes": 4817
+  },
+  "./ee1/paper5": {
+    "expected": "0a8c17c457ee869e8df4acaa1195cd97e19e762abf2669c53029bdb0ff5d4892",
+    "actual": "0a8c17c457ee869e8df4acaa1195cd97e19e762abf2669c53029bdb0ff5d4892",
+    "bytes": 4460
+  },
+  "./ee1/paper6": {
+    "expected": "2f12f55edd72c7977c37990b31c0f072727da0ce488a811ee741d5ed02f740a2",
+    "actual": "2f12f55edd72c7977c37990b31c0f072727da0ce488a811ee741d5ed02f740a2",
+    "bytes": 11439
+  },
+  "./ee1/pic": {
+    "expected": "5eae403629db5d18717b22766482c938af6d42ad289aaed86b9d6adc9a8b3a52",
+    "actual": "5eae403629db5d18717b22766482c938af6d42ad289aaed86b9d6adc9a8b3a52",
+    "bytes": 50726
+  },
+  "./ee1/plrabn12.txt": {
+    "expected": "088d8452fe2bff923ebf8beb6b6f1194a33e66f9f96a17ed0961a2867bf219e1",
+    "actual": "088d8452fe2bff923ebf8beb6b6f1194a33e66f9f96a17ed0961a2867bf219e1",
+    "bytes": 141203
+  },
+  "./ee1/progc": {
+    "expected": "d27ee84b0d63b335937629e33edcc8ec45dbea6d98f7d418e7cfd2c57a5fed74",
+    "actual": "d27ee84b0d63b335937629e33edcc8ec45dbea6d98f7d418e7cfd2c57a5fed74",
+    "bytes": 11626
+  },
+  "./ee1/progl": {
+    "expected": "4fa0c5d4da12ffcdda3010e72d76d228018d8fa8d094d94b3647185051989d9f",
+    "actual": "4fa0c5d4da12ffcdda3010e72d76d228018d8fa8d094d94b3647185051989d9f",
+    "bytes": 14423
+  },
+  "./ee1/progp": {
+    "expected": "0e952d46707c55f574e71ae672f44309eddcb62741e1d99d1f92b558b0321e5d",
+    "actual": "0e952d46707c55f574e71ae672f44309eddcb62741e1d99d1f92b558b0321e5d",
+    "bytes": 10075
+  },
+  "./ee1/ptt5": {
+    "expected": "5eae403629db5d18717b22766482c938af6d42ad289aaed86b9d6adc9a8b3a52",
+    "actual": "5eae403629db5d18717b22766482c938af6d42ad289aaed86b9d6adc9a8b3a52",
+    "bytes": 50726
+  },
+  "./ee1/sum": {
+    "expected": "9f4468e49384dd3d9bb82b7ed27a9b59ecc712c8fcbe82e7c0915646246d8d9f",
+    "actual": "9f4468e49384dd3d9bb82b7ed27a9b59ecc712c8fcbe82e7c0915646246d8d9f",
+    "bytes": 12261
+  },
+  "./ee1/trans": {
+    "expected": "5c4dd5d9a47f20702906a5186339bf4f8dd5a0c5ce18f6cd5ee5a6b64494fefb",
+    "actual": "5c4dd5d9a47f20702906a5186339bf4f8dd5a0c5ce18f6cd5ee5a6b64494fefb",
+    "bytes": 15824
+  },
+  "./ee1/world192.txt": {
+    "expected": "624a2841dcb2515356ac7872311bbb480fc320824f402685502d6bf9f37ac055",
+    "actual": "624a2841dcb2515356ac7872311bbb480fc320824f402685502d6bf9f37ac055",
+    "bytes": 441377
+  },
+  "./ee1/xargs.1": {
+    "expected": "d4108441eb9e683eda19e7acb9d49e91b20b17687d47d1ffe270f84a02c2bb94",
+    "actual": "d4108441eb9e683eda19e7acb9d49e91b20b17687d47d1ffe270f84a02c2bb94",
+    "bytes": 1542
+  }
+}

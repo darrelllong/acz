@@ -13,7 +13,9 @@
 
 use std::io;
 
-use arith::{BitModel, Decoder, Encoder, FrequencyTable, RangeDecoder, RangeEncoder};
+use arith::{
+    BitModel, Decoder, Encoder, FrequencyTable, MultiRangeDecoder, MultiRangeEncoder, RangeDecoder, RangeEncoder,
+};
 
 use crate::cm::Cm;
 
@@ -30,7 +32,7 @@ pub enum Order {
     /// along a binary tree, each event coded with an adaptive skew
     /// (Langdon §4, "linearized binary tree").
     Two,
-    /// PPMd variant H, order 6 (see [`crate::ppmd`]).
+    /// Prediction by partial matching, up to order 6 (see [`crate::ppm`]).
     Ppm,
     /// Context mixing of orders 0–4 and 6, a word model, record contexts and
     /// a match model (see [`crate::cm`]).
@@ -46,7 +48,7 @@ pub fn model_memory(order: Order, block_size: usize) -> u64 {
         Order::One => 256 * (1 << 12),
         Order::Two => 2 << 24,
         Order::Mix => Cm::memory(block_size),
-        Order::Ppm => crate::ppmd::memory(block_size),
+        Order::Ppm => crate::ppm::Ppm::memory(block_size),
     }
 }
 
@@ -92,6 +94,7 @@ enum ByteModel {
     One { tables: Vec<FrequencyTable>, prev: usize },
     Two { nodes: Vec<BitModel<4>>, ctx: usize },
     Mix(Box<Cm>),
+    Ppm(Box<crate::ppm::Ppm>),
 }
 
 impl ByteModel {
@@ -101,7 +104,7 @@ impl ByteModel {
             Order::One => ByteModel::One { tables: vec![FrequencyTable::new(256); 256], prev: 0 },
             Order::Two => ByteModel::Two { nodes: vec![BitModel::new(); 1 << 24], ctx: 0 },
             Order::Mix => ByteModel::Mix(Box::new(Cm::new(len))),
-            Order::Ppm => unreachable!("PPMd codes whole blocks itself"),
+            Order::Ppm => ByteModel::Ppm(Box::new(crate::ppm::Ppm::new(len))),
         }
     }
 }
@@ -153,10 +156,12 @@ pub(crate) fn reserve_bounded(v: &mut Vec<u8>, need: usize, limit: usize) {
 /// Compress one block with a fresh model of the given order.
 ///
 /// Orders 0 and 1 give each byte an interval of a frequency total, so they
-/// use Langdon's multi-symbol coder ([`Encoder`]). Order 2 and context
-/// mixing predict one bit at a time, so they use the byte-wise binary range
-/// coder ([`RangeEncoder`]), which costs less per decision. PPMd brings its
-/// own range coder, the one its reference uses (see [`crate::ppmd`]).
+/// use Langdon's multi-symbol coder ([`Encoder`]). PPM codes several events
+/// per byte, intervals and binary decisions, so it uses the multi-symbol
+/// range coder ([`MultiRangeEncoder`]): one division per interval and
+/// output a byte at a time. Order 2 and context mixing predict one bit at a
+/// time, so they use the byte-wise binary range coder ([`RangeEncoder`]),
+/// which costs less per decision.
 ///
 /// Returns `None` if the code string would not be strictly smaller than
 /// the input (the caller then stores the block). Output allocation requests
@@ -166,12 +171,12 @@ pub fn encode_block(order: Order, data: &[u8]) -> Option<Vec<u8>> {
     let limit = data.len().checked_sub(1)?;
     match order {
         Order::Zero | Order::One => encode_symbols(order, data, limit),
-        Order::Ppm => crate::ppmd::encode_block(data, limit),
+        Order::Ppm => encode_ppm(data, limit),
         Order::Two | Order::Mix => encode_binary(order, data, limit),
     }
 }
 
-/// Multi-symbol models, on the bit-wise coder (any alphabet).
+/// Orders 0 and 1, on the bit-wise coder (any alphabet).
 fn encode_symbols(order: Order, data: &[u8], limit: usize) -> Option<Vec<u8>> {
     let mut enc = Encoder::new(Bounded::new(limit));
     let r: io::Result<()> = (|| {
@@ -187,12 +192,21 @@ fn encode_symbols(order: Order, data: &[u8], limit: usize) -> Option<Vec<u8>> {
                     prev = usize::from(b);
                 }
             }
-            _ => unreachable!("binary models use encode_binary"),
+            _ => unreachable!("PPM and the binary models have their own coders"),
         }
         Ok(())
     })();
     // The only possible error is the bounded sink filling up.
     r.ok()?;
+    enc.finish().ok().map(Bounded::into_inner)
+}
+
+/// PPM, on the multi-symbol range coder.
+fn encode_ppm(data: &[u8], limit: usize) -> Option<Vec<u8>> {
+    let ByteModel::Ppm(mut m) = ByteModel::new(Order::Ppm, data.len()) else { unreachable!("a PPM model") };
+    let mut enc = MultiRangeEncoder::new(Bounded::new(limit));
+    // The only possible error is the bounded sink filling up.
+    data.iter().try_for_each(|&b| m.encode(&mut enc, b)).ok()?;
     enc.finish().ok().map(Bounded::into_inner)
 }
 
@@ -240,7 +254,7 @@ fn encode_binary(order: Order, data: &[u8], limit: usize) -> Option<Vec<u8>> {
 pub fn decode_block(order: Order, packed: &[u8], raw_len: usize) -> io::Result<Vec<u8>> {
     match order {
         Order::Zero | Order::One => decode_symbols(order, packed, raw_len),
-        Order::Ppm => crate::ppmd::decode_block(packed, raw_len),
+        Order::Ppm => decode_ppm(packed, raw_len),
         Order::Two | Order::Mix => decode_binary(order, packed, raw_len),
     }
 }
@@ -261,13 +275,28 @@ fn decode_symbols(order: Order, packed: &[u8], raw_len: usize) -> io::Result<Vec
                 prev = s;
             }
         }
-        _ => unreachable!("binary models use decode_binary"),
+        _ => unreachable!("PPM and the binary models have their own coders"),
     }
     // Any code value inside the final interval decodes to the same bytes.
     // Require the exact termination the encoder writes and no bytes left
     // over, so a payload changed after its last significant bit, or with
     // bytes appended, is rejected rather than accepted as equivalent.
     if !dec.is_canonical_end() || !dec.finish().is_empty() {
+        return Err(io::Error::new(io::ErrorKind::InvalidData, "corrupt block (bad code string termination)"));
+    }
+    Ok(out)
+}
+
+fn decode_ppm(packed: &[u8], raw_len: usize) -> io::Result<Vec<u8>> {
+    let mut out = Vec::with_capacity(raw_len);
+    let mut dec = MultiRangeDecoder::new(packed)?;
+    let ByteModel::Ppm(mut m) = ByteModel::new(Order::Ppm, raw_len) else { unreachable!("a PPM model") };
+    for _ in 0..raw_len {
+        out.push(m.decode(&mut dec)?);
+    }
+    // As for the other coders: only the exact code string the encoder
+    // writes, every byte of it and no more, is accepted.
+    if !dec.is_canonical_end() {
         return Err(io::Error::new(io::ErrorKind::InvalidData, "corrupt block (bad code string termination)"));
     }
     Ok(out)

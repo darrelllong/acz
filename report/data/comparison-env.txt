@@ -1,0 +1,9 @@
+rustc 1.96.0 (ac68faa20 2026-05-25)
+xz (XZ Utils) 5.4.5
+*** Zstandard CLI (64-bit) v1.5.5, by Yann Collet ***
+bzip2, a block-sorting file compressor.  Version 1.0.8, 13-Jul-2019.
+gzip 1.12
+84d47745e29a58b2080f28efaf2c7545fec2d33f8d7dad53e7c1e23a51c4ed45  acz-tip
+88a0c56 README: options after the CLI consistency change
+Model name:                              Cortex-X925
+Model name:                              Cortex-A725

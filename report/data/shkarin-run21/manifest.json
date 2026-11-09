@@ -1,0 +1,21 @@
+{
+  "experiment": "run21-frozen-c60f81f4",
+  "source_sha256": "c60f81f4b1f163944832dcf19f300d4b67fed03c247f1da5177425f360fed7f2",
+  "notes": [
+    "Raw code sizes, old general interval coder, fixed-order single size run; encode_s/verify_s are not comparative timings.",
+    "All 132 retained output contents independently rehashed after the run; exact harness checks decoded bytes and canonical termination, but the independent audit did not re-decode.",
+    "33 input entries, 117221759 bytes, 32 unique contents: calgary/pic and cantrbry/ptt5 duplicate weighting is retained.",
+    "EE1 uses our first-symbol-rank-zero approximation, not the paper full numerical initializer.",
+    "Historical experimental source is privately retained; hashes identify it. Repeating this experiment requires that source."
+  ],
+  "files": {
+    "bindings.json": "3e927d258e7d5f11d180620b33e881adf5e38b14a80c3ab1f5038ae24506681e",
+    "code-sha256.txt": "767c8e3df443fe1705590f2af5cd20f2cb20d10ab13e4423ad905962a91922ff",
+    "done": "d117fa006ba9208500b2930ce69cbde436c647afa917cb7396a9bc9111a46dd2",
+    "env.txt": "afb0c1271682e66e6f5c9a23907d5a403fbcc24b9e7f2c4b86267d48faeb6fa2",
+    "inputs.json": "6ece36678414300a0fd35cd3ecb7e8c10412ea28eba7ff265f915a7480dc2f26",
+    "outputs.json": "fafdcbafe8b71b8e779e70b0a94611549fd194185e529c4eec3961a6eb492400",
+    "runner.sh": "f6a977d64ad6e54cd1fe280b341ed081280f9a5774863a7fd5f8d0ac52389040",
+    "sizes.tsv": "385af5c78ecccbbf9ae05a9b51a137228a3c35521d62dace10d4da73f3a96554"
+  }
+}

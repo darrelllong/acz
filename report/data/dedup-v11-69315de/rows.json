@@ -1,0 +1,650 @@
+[
+  {
+    "file": "dickens",
+    "raw_bytes": 10192446,
+    "raw_sha256": "b24c37886142e11d0ee687db6ab06f936207aa7f2ea1fd1d9a36763c7a507e6a",
+    "packed_bytes": 2280870,
+    "packed_sha256": "d0f100ef0b7308903575857ab204a60ecae5fcb1c4dc1116892479b544311035",
+    "roundtrip": true,
+    "encode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-3",
+      "--dedup=256M",
+      "--block=16M",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/corpus/silesia/dickens"
+    ],
+    "decode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-d",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/containers-3/dickens.acz"
+    ],
+    "model": 3
+  },
+  {
+    "file": "mozilla",
+    "raw_bytes": 51220480,
+    "raw_sha256": "657fc3764b0c75ac9de9623125705831ebbfbe08fed248df73bc2dc66e2a963b",
+    "packed_bytes": 16074266,
+    "packed_sha256": "ceae4943ed107e18fca30d1c2b1839aadca6ac4eda601531ee4dc5aa2b91be99",
+    "roundtrip": true,
+    "encode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-3",
+      "--dedup=256M",
+      "--block=16M",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/corpus/silesia/mozilla"
+    ],
+    "decode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-d",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/containers-3/mozilla.acz"
+    ],
+    "model": 3
+  },
+  {
+    "file": "mr",
+    "raw_bytes": 9970564,
+    "raw_sha256": "68637ed52e3e4860174ed2dc0840ac77d5f1a60abbcb13770d5754e3774d53e6",
+    "packed_bytes": 2306515,
+    "packed_sha256": "56659a8d5379c63b935fe685af48ed75ced04cd0080bc030e297165ab97c189e",
+    "roundtrip": true,
+    "encode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-3",
+      "--dedup=256M",
+      "--block=16M",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/corpus/silesia/mr"
+    ],
+    "decode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-d",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/containers-3/mr.acz"
+    ],
+    "model": 3
+  },
+  {
+    "file": "nci",
+    "raw_bytes": 33553445,
+    "raw_sha256": "fc63a31770947b8c2062d3b19ca94c00485a232bb91b502021948fee983e1635",
+    "packed_bytes": 1985591,
+    "packed_sha256": "eea6b3fab8d8e22e6daa68c61c1860c791dd42158276d17ffc8d0f041c0b1029",
+    "roundtrip": true,
+    "encode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-3",
+      "--dedup=256M",
+      "--block=16M",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/corpus/silesia/nci"
+    ],
+    "decode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-d",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/containers-3/nci.acz"
+    ],
+    "model": 3
+  },
+  {
+    "file": "ooffice",
+    "raw_bytes": 6152192,
+    "raw_sha256": "e7ee013880d34dd5208283d0d3d91b07f442e067454276095ded14f322a656eb",
+    "packed_bytes": 2537885,
+    "packed_sha256": "bda9bc996a2da14cee8a114e80071450fd91f4d82e3aa5780e34b4e77a017f62",
+    "roundtrip": true,
+    "encode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-3",
+      "--dedup=256M",
+      "--block=16M",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/corpus/silesia/ooffice"
+    ],
+    "decode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-d",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/containers-3/ooffice.acz"
+    ],
+    "model": 3
+  },
+  {
+    "file": "osdb",
+    "raw_bytes": 10085684,
+    "raw_sha256": "60f027179302ca3ad87c58ac90b6be72ec23588aaa7a3b7fe8ecc0f11def3fa3",
+    "packed_bytes": 2386636,
+    "packed_sha256": "c5529599eeafa7cb2b02ab22e5c00e2a2697ececfd2057176d461c604c5377a8",
+    "roundtrip": true,
+    "encode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-3",
+      "--dedup=256M",
+      "--block=16M",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/corpus/silesia/osdb"
+    ],
+    "decode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-d",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/containers-3/osdb.acz"
+    ],
+    "model": 3
+  },
+  {
+    "file": "reymont",
+    "raw_bytes": 6627202,
+    "raw_sha256": "0eac0114a3dfe6e2ee1f345a0f79d653cb26c3bc9f0ed79238af4933422b7578",
+    "packed_bytes": 1141371,
+    "packed_sha256": "e9eb59123e372f7b5f111546a177699cddfe583ca8ec997369ebfec42aceb2ba",
+    "roundtrip": true,
+    "encode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-3",
+      "--dedup=256M",
+      "--block=16M",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/corpus/silesia/reymont"
+    ],
+    "decode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-d",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/containers-3/reymont.acz"
+    ],
+    "model": 3
+  },
+  {
+    "file": "samba",
+    "raw_bytes": 21606400,
+    "raw_sha256": "93ba07bc44d8267789c1d911992f40b089ffa2140b4a160fac11ccae9a40e7b2",
+    "packed_bytes": 4034171,
+    "packed_sha256": "43401febb433a26ff022d19dbab2684dfc53df8860addcea95b5935ab15e5cd6",
+    "roundtrip": true,
+    "encode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-3",
+      "--dedup=256M",
+      "--block=16M",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/corpus/silesia/samba"
+    ],
+    "decode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-d",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/containers-3/samba.acz"
+    ],
+    "model": 3
+  },
+  {
+    "file": "sao",
+    "raw_bytes": 7251944,
+    "raw_sha256": "c2d0ea2cc59d4c21b7fe43a71499342a00cbe530a1d5548770e91ecd6214adcc",
+    "packed_bytes": 4757999,
+    "packed_sha256": "89706ac519e36f2afa5cd135f2b4811eae948e4166185ab36d84d1311cf9fb90",
+    "roundtrip": true,
+    "encode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-3",
+      "--dedup=256M",
+      "--block=16M",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/corpus/silesia/sao"
+    ],
+    "decode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-d",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/containers-3/sao.acz"
+    ],
+    "model": 3
+  },
+  {
+    "file": "webster",
+    "raw_bytes": 41458703,
+    "raw_sha256": "6a68f69b26daf09f9dd84f7470368553194a0b294fcfa80f1604efb11143a383",
+    "packed_bytes": 6754343,
+    "packed_sha256": "732950d90e021100892f4c1992323ab3751e8df5373f363c43e561b3b792d72f",
+    "roundtrip": true,
+    "encode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-3",
+      "--dedup=256M",
+      "--block=16M",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/corpus/silesia/webster"
+    ],
+    "decode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-d",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/containers-3/webster.acz"
+    ],
+    "model": 3
+  },
+  {
+    "file": "x-ray",
+    "raw_bytes": 8474240,
+    "raw_sha256": "7de9fce1405dc44ae5e6813ed21cd5751e761bd4265655a005d39b9685d1c9ad",
+    "packed_bytes": 3851245,
+    "packed_sha256": "73d0d26bcb16cb91bbf3cc85b7c0ae7380b5e6ab282d92e2b5416ad37806bd41",
+    "roundtrip": true,
+    "encode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-3",
+      "--dedup=256M",
+      "--block=16M",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/corpus/silesia/x-ray"
+    ],
+    "decode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-d",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/containers-3/x-ray.acz"
+    ],
+    "model": 3
+  },
+  {
+    "file": "xml",
+    "raw_bytes": 5345280,
+    "raw_sha256": "0e82e54e695c1938e4193448022543845b33020c8be6bf3bf3ead2224903e08c",
+    "packed_bytes": 439990,
+    "packed_sha256": "1d5736d3b66461539c0097f50baf4bad8045c65e346b31f7cdfd4b4990ae6143",
+    "roundtrip": true,
+    "encode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-3",
+      "--dedup=256M",
+      "--block=16M",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/corpus/silesia/xml"
+    ],
+    "decode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-d",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/containers-3/xml.acz"
+    ],
+    "model": 3
+  },
+  {
+    "file": "dickens",
+    "raw_bytes": 10192446,
+    "raw_sha256": "b24c37886142e11d0ee687db6ab06f936207aa7f2ea1fd1d9a36763c7a507e6a",
+    "packed_bytes": 2328566,
+    "packed_sha256": "63943c2fca6676d1fa881c177a5f54d3685d43f6a3c6142f3c35a289891dcad8",
+    "roundtrip": true,
+    "encode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-4",
+      "--dedup=256M",
+      "--block=16M",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/corpus/silesia/dickens"
+    ],
+    "decode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-d",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/containers-4/dickens.acz"
+    ],
+    "model": 4
+  },
+  {
+    "file": "mozilla",
+    "raw_bytes": 51220480,
+    "raw_sha256": "657fc3764b0c75ac9de9623125705831ebbfbe08fed248df73bc2dc66e2a963b",
+    "packed_bytes": 12857904,
+    "packed_sha256": "99ae1c33ff7ecc2ed4f56e964b565028710b82b979f0748eb6dd1510607a9f41",
+    "roundtrip": true,
+    "encode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-4",
+      "--dedup=256M",
+      "--block=16M",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/corpus/silesia/mozilla"
+    ],
+    "decode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-d",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/containers-4/mozilla.acz"
+    ],
+    "model": 4
+  },
+  {
+    "file": "mr",
+    "raw_bytes": 9970564,
+    "raw_sha256": "68637ed52e3e4860174ed2dc0840ac77d5f1a60abbcb13770d5754e3774d53e6",
+    "packed_bytes": 2251334,
+    "packed_sha256": "8405674cb39c714550a9e5ebc0c7dec72df071f149f061c36ca1a2e7cd483be8",
+    "roundtrip": true,
+    "encode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-4",
+      "--dedup=256M",
+      "--block=16M",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/corpus/silesia/mr"
+    ],
+    "decode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-d",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/containers-4/mr.acz"
+    ],
+    "model": 4
+  },
+  {
+    "file": "nci",
+    "raw_bytes": 33553445,
+    "raw_sha256": "fc63a31770947b8c2062d3b19ca94c00485a232bb91b502021948fee983e1635",
+    "packed_bytes": 1460210,
+    "packed_sha256": "2efcbb0e82ee77a766039c2266f421d5b73598f6060b35cc959f388ca7a3c6c7",
+    "roundtrip": true,
+    "encode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-4",
+      "--dedup=256M",
+      "--block=16M",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/corpus/silesia/nci"
+    ],
+    "decode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-d",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/containers-4/nci.acz"
+    ],
+    "model": 4
+  },
+  {
+    "file": "ooffice",
+    "raw_bytes": 6152192,
+    "raw_sha256": "e7ee013880d34dd5208283d0d3d91b07f442e067454276095ded14f322a656eb",
+    "packed_bytes": 2172779,
+    "packed_sha256": "d57f3127bb272c2aedeaee0be2c43fb4931490eb344e6ca11e1219a079168aea",
+    "roundtrip": true,
+    "encode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-4",
+      "--dedup=256M",
+      "--block=16M",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/corpus/silesia/ooffice"
+    ],
+    "decode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-d",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/containers-4/ooffice.acz"
+    ],
+    "model": 4
+  },
+  {
+    "file": "osdb",
+    "raw_bytes": 10085684,
+    "raw_sha256": "60f027179302ca3ad87c58ac90b6be72ec23588aaa7a3b7fe8ecc0f11def3fa3",
+    "packed_bytes": 2357939,
+    "packed_sha256": "56a4a4caea943d5ac7c46de1fb83cde14b53cfcb58555c8bdd83b3361cb455c1",
+    "roundtrip": true,
+    "encode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-4",
+      "--dedup=256M",
+      "--block=16M",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/corpus/silesia/osdb"
+    ],
+    "decode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-d",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/containers-4/osdb.acz"
+    ],
+    "model": 4
+  },
+  {
+    "file": "reymont",
+    "raw_bytes": 6627202,
+    "raw_sha256": "0eac0114a3dfe6e2ee1f345a0f79d653cb26c3bc9f0ed79238af4933422b7578",
+    "packed_bytes": 1040693,
+    "packed_sha256": "c01fd960c864e142d2dc4192db79c1b06f72546ed311050d343e8e516cb6211c",
+    "roundtrip": true,
+    "encode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-4",
+      "--dedup=256M",
+      "--block=16M",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/corpus/silesia/reymont"
+    ],
+    "decode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-d",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/containers-4/reymont.acz"
+    ],
+    "model": 4
+  },
+  {
+    "file": "samba",
+    "raw_bytes": 21606400,
+    "raw_sha256": "93ba07bc44d8267789c1d911992f40b089ffa2140b4a160fac11ccae9a40e7b2",
+    "packed_bytes": 3264727,
+    "packed_sha256": "08d090d653fb7ed28ac121da6f1df5f36c1588bafda4cc5b27efca7688830e98",
+    "roundtrip": true,
+    "encode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-4",
+      "--dedup=256M",
+      "--block=16M",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/corpus/silesia/samba"
+    ],
+    "decode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-d",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/containers-4/samba.acz"
+    ],
+    "model": 4
+  },
+  {
+    "file": "sao",
+    "raw_bytes": 7251944,
+    "raw_sha256": "c2d0ea2cc59d4c21b7fe43a71499342a00cbe530a1d5548770e91ecd6214adcc",
+    "packed_bytes": 4250067,
+    "packed_sha256": "b56b647c1dd95843278fa57d688a4d87c6161bcc04b1320858472983786697be",
+    "roundtrip": true,
+    "encode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-4",
+      "--dedup=256M",
+      "--block=16M",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/corpus/silesia/sao"
+    ],
+    "decode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-d",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/containers-4/sao.acz"
+    ],
+    "model": 4
+  },
+  {
+    "file": "webster",
+    "raw_bytes": 41458703,
+    "raw_sha256": "6a68f69b26daf09f9dd84f7470368553194a0b294fcfa80f1604efb11143a383",
+    "packed_bytes": 6651271,
+    "packed_sha256": "35ea08610b0f669a619ba8d2f9ed80daf46eb0614ed8881d3679e9fcbc9c9254",
+    "roundtrip": true,
+    "encode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-4",
+      "--dedup=256M",
+      "--block=16M",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/corpus/silesia/webster"
+    ],
+    "decode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-d",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/containers-4/webster.acz"
+    ],
+    "model": 4
+  },
+  {
+    "file": "x-ray",
+    "raw_bytes": 8474240,
+    "raw_sha256": "7de9fce1405dc44ae5e6813ed21cd5751e761bd4265655a005d39b9685d1c9ad",
+    "packed_bytes": 3747254,
+    "packed_sha256": "42ed615058ef4ab0743fdbf543fdba6aecaabc114116572d1d524f91dcca2018",
+    "roundtrip": true,
+    "encode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-4",
+      "--dedup=256M",
+      "--block=16M",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/corpus/silesia/x-ray"
+    ],
+    "decode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-d",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/containers-4/x-ray.acz"
+    ],
+    "model": 4
+  },
+  {
+    "file": "xml",
+    "raw_bytes": 5345280,
+    "raw_sha256": "0e82e54e695c1938e4193448022543845b33020c8be6bf3bf3ead2224903e08c",
+    "packed_bytes": 357854,
+    "packed_sha256": "84ec0996e88795accddcb48051ccb60c4bb6da5a21f9281f13841713fa6c6f5f",
+    "roundtrip": true,
+    "encode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-4",
+      "--dedup=256M",
+      "--block=16M",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/corpus/silesia/xml"
+    ],
+    "decode": [
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/source/target/release/acz",
+      "-d",
+      "-T1",
+      "--memory=4G",
+      "-c",
+      "/Users/darrell/coding/acz-bench/v11-review-69315de/containers-4/xml.acz"
+    ],
+    "model": 4
+  }
+]

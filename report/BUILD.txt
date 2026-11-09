@@ -1,0 +1,11 @@
+Build the technical report
+==========================
+
+Editable source: report.tex
+Build from the repository root: python3 report/build_report.py
+Dependencies: Python 3 standard library and pdflatex (TeX Live/MacTeX).
+Output: report/output/pdf/arith-acz-technical-report-draft.pdf
+
+See report/README.md for evidence selection, exact experiment provenance,
+validation commands, and PDF review instructions. Earlier draft instructions
+and audit notes are retained in the private development repository history.

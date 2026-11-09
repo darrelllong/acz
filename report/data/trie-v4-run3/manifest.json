@@ -1,0 +1,38 @@
+{
+  "experiment": "Silesia final balanced original-v9 versus frozen forward-trie v4",
+  "source_identity": {
+    "v9_commit": "2a73c2b",
+    "tree4_ppm_sha256": "ca81ea6cd05985c22d3e405206ef694b35fce3c81c481a32383bb9ae5c4fc834"
+  },
+  "binary_sha256": {
+    "acz-v9-base": "19ad617d36cc2bf8dcc4b89c1effe92bca66a9925058e061777212ccf857aac2",
+    "acz-v9-tree4": "dd189122579bd7cd890fb76c560a6dfd9a4ca472d4cc8236c9cd260f87ac3e3e"
+  },
+  "rows_sha256": "bb03bd96a470260654419e3567b2b9037a72004dd0c606aef9568db6acdf92be",
+  "files": {
+    "env.txt": "e7ce1befa0c4c484547b85c2f1cbb7825e0294e12710d84afe57f583f28b402b",
+    "runtime-source-sha256.json": "a576f21aeba0a36f6b42b944ef8f9976eed20a9b1f42aa52069c4cb4a2875155",
+    "build-run3-postrun.txt": "668a5362f683303be60a0de7186f68bfbba212a2afb529e0ab5a4685d848caec",
+    "run.sh": "1ff6cac74950752aa0b8ea218a7f92b017239080c914fbd070d1e731eec6dfd9",
+    "build-run2-postrun.txt": "703ef728ea876e4c5ba71d907b43f8dbd3f01ea706626752182a1357f12ac9e9",
+    "rows.tsv": "bb03bd96a470260654419e3567b2b9037a72004dd0c606aef9568db6acdf92be",
+    "inputs.json": "d59c18d7ef9b4fd9fc9c336e6f4c5e6fc4de9e249a3936b0df20de853a0b28ab",
+    "build-run1-postrun.txt": "45f41a995e84b3ef1929332d8e56c031fff0bcf76e407deed1534df30ad4f93b"
+  },
+  "aggregation": "Sum the twelve file times in each repetition, then take the median over four repetitions; maximum per-process RSS is reported separately.",
+  "units": {
+    "cpu": "seconds, user plus system",
+    "elapsed": "seconds",
+    "peak_rss": "KiB, whole-process high-water mark",
+    "compressed_size": "complete-container bytes"
+  },
+  "limitations": [
+    "Silesia was used in development; it is not held-out evidence.",
+    "Frozen v4 is an experimental build with changed restart semantics; it is not the v12 integration binary.",
+    "The private v12 integration independently matches every frozen-v4 payload after accounting only for container version and header CRC; this is identity, not a fresh timing run.",
+    "This comparison measures the complete context-tree, storage and coder-call redesign, not isolated hash cost.",
+    "Per-start filtered process snapshots are not continuous core-occupancy monitoring.",
+    "Build sidecars describe earlier builds after the run, not a contemporaneous build execution log.",
+    "Automatic model restart policies differ between v9 and v4."
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "/home/darrell/acz-eval/tree-20261108/src/claude-v6-build-d1c04ca3/target/release/devbench": {
+    "expected": "4b78d14d926cd4781a338aa5b26a3cf47d0ac373a4b80dcc6c0f29a292c003d5",
+    "actual": "4b78d14d926cd4781a338aa5b26a3cf47d0ac373a4b80dcc6c0f29a292c003d5",
+    "bytes": 515968
+  },
+  "/home/darrell/acz-eval/tree-20261108/src/claude-v6-frozen-d1c04ca3/MANIFEST.sha256": {
+    "expected": "d7080ebcc70c9d04d8dfb7d1edd68be8633f91879ba4a78ad42535237700a675",
+    "actual": "d7080ebcc70c9d04d8dfb7d1edd68be8633f91879ba4a78ad42535237700a675",
+    "bytes": 1202
+  },
+  "/home/darrell/acz-eval/tree-20261108/src/claude-v6-frozen-d1c04ca3/src/ppm6.rs": {
+    "expected": "d1c04ca3b64afa00466b5f741345cc2e7b6acf2defdcfedac2730a2d5338ea6d",
+    "actual": "d1c04ca3b64afa00466b5f741345cc2e7b6acf2defdcfedac2730a2d5338ea6d",
+    "bytes": 79468
+  },
+  "/home/darrell/acz-eval/tree-20261108/src/claude-v6-frozen-d1c04ca3/src/bin/devbench.rs": {
+    "expected": "60f0e27863afe816d7fc06b08b44a72e83a7816de127703d60ab2849b3e287e8",
+    "actual": "60f0e27863afe816d7fc06b08b44a72e83a7816de127703d60ab2849b3e287e8",
+    "bytes": 6987
+  },
+  "/home/darrell/acz-eval/tree-20261108/src/claude-v6-build-d1c04ca3/Cargo.toml": {
+    "expected": "997398614531469554299341ddc898eab0f8429a3d633f56cbeaa9d88159f87a",
+    "actual": "997398614531469554299341ddc898eab0f8429a3d633f56cbeaa9d88159f87a",
+    "bytes": 222
+  },
+  "/home/darrell/acz-eval/tree-20261108/src/claude-v6-build-d1c04ca3/Cargo.lock": {
+    "expected": "9703a8f5daac691a74bad1235bd06add5b0cf0cadb17e513573bfe8c7a75a79a",
+    "actual": "9703a8f5daac691a74bad1235bd06add5b0cf0cadb17e513573bfe8c7a75a79a",
+    "bytes": 227
+  },
+  "/home/darrell/acz-eval/tree-20261108/v6-run-d1c04ca3.sh": {
+    "expected": "070b247d27d76b4598030941ce81c58f995f16fc5ff9e3a840bd9162bf0348b6",
+    "actual": "070b247d27d76b4598030941ce81c58f995f16fc5ff9e3a840bd9162bf0348b6",
+    "bytes": 2101
+  },
+  "/home/darrell/acz-eval/tree-20261108/src/acz-v9-base/Cargo.toml": {
+    "expected": "52f5a7993b97b442ff1d66fc536b52fb025d2d213176d3fa6637df3f1b91e196",
+    "actual": "52f5a7993b97b442ff1d66fc536b52fb025d2d213176d3fa6637df3f1b91e196",
+    "bytes": 252
+  },
+  "/home/darrell/acz-eval/tree-20261108/src/acz-v9-base/arith/Cargo.toml": {
+    "expected": "025a877f003e322fcb9fe3a82d0d0a9a09c443472eb06c28cf9af051d962ea99",
+    "actual": "025a877f003e322fcb9fe3a82d0d0a9a09c443472eb06c28cf9af051d962ea99",
+    "bytes": 260
+  },
+  "/home/darrell/acz-eval/tree-20261108/src/acz-v9-base/arith/src/coder.rs": {
+    "expected": "99cff9243567f30dd422ba89ec9d334cabaa7fa57b7a1b8be69ae60e6e803806",
+    "actual": "99cff9243567f30dd422ba89ec9d334cabaa7fa57b7a1b8be69ae60e6e803806",
+    "bytes": 18246
+  },
+  "/home/darrell/acz-eval/tree-20261108/src/acz-v9-base/arith/src/lib.rs": {
+    "expected": "f178d7e3d9d5ff7510ea38ca58eb3289f0cd3410c5de49f88b874db3ea2d6e70",
+    "actual": "f178d7e3d9d5ff7510ea38ca58eb3289f0cd3410c5de49f88b874db3ea2d6e70",
+    "bytes": 3962
+  },
+  "/home/darrell/acz-eval/tree-20261108/src/acz-v9-base/arith/src/model.rs": {
+    "expected": "d89bee574664402215628396e301227fcbd60b2332f353d86526e2c64bb2dff3",
+    "actual": "d89bee574664402215628396e301227fcbd60b2332f353d86526e2c64bb2dff3",
+    "bytes": 10983
+  },
+  "/home/darrell/acz-eval/tree-20261108/src/acz-v9-base/arith/src/range.rs": {
+    "expected": "17db7d51a555c00418a9aab2fa3b8b4207f4b89ab52a6cd314062a9479c72643",
+    "actual": "17db7d51a555c00418a9aab2fa3b8b4207f4b89ab52a6cd314062a9479c72643",
+    "bytes": 11064
+  }
+}

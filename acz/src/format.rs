@@ -4,12 +4,12 @@
 //
 // Dedicated to the memory of my colleague Glen G. Langdon
 
-//! The `.acz` stream format (version 11: blocked, parallel, checksummed framing).
+//! The `.acz` stream format (version 13: blocked, parallel, checksummed framing).
 //!
 //! ```text
 //! member  := header block* end trailer
-//! header  := magic "ACZ\x0B"   (4 bytes; the last byte is the format version)
-//!            model             (1 byte: 0, 1, 2 = order-0/1/2, 3 = PPMd,
+//! header  := magic "ACZ\x0D"   (4 bytes; the last byte is the format version)
+//!            model             (1 byte: 0, 1, 2 = order-0/1/2, 3 = PPM,
 //!                               4 = context mixing; any other value is
 //!                               rejected)
 //!            flags             (1 byte: bit 0 = long-repeat removal; all
@@ -54,9 +54,9 @@
 //! stream  := member+
 //! ```
 //!
-//! Models 0 and 1 use the bit-wise coder; models 2 and 4 the byte-wise binary
-//! range coder; model 3 (PPMd) the 7z range coder of its reference. Every coded block (or residual) starts from a freshly initialised
-//! model.
+//! Models 0 and 1 use the bit-wise coder; model 3 the multi-symbol range
+//! coder; models 2 and 4 the byte-wise binary range coder. Every coded block
+//! (or residual) starts from a freshly initialized model.
 //!
 //! **Parallel blocks.** Every block's model starts afresh and the framing
 //! gives each block's sizes, so the model-coded parts of blocks are
@@ -110,7 +110,7 @@ use crate::dedup::{get_varint, pack_commands, put_varint, unpack_commands, MAX_V
 use crate::models::{decode_block, encode_block, Order};
 
 /// Magic number at the start of every member (last byte = format version).
-pub const MAGIC: [u8; 4] = *b"ACZ\x0B";
+pub const MAGIC: [u8; 4] = *b"ACZ\x0D";
 const HEADER_LEN: usize = 16;
 const TRAILER_LEN: usize = 16;
 const BLOCK_HEADER_LEN: usize = 9;
@@ -415,7 +415,7 @@ fn header(opts: &Options) -> [u8; HEADER_LEN] {
 /// in order; only `work` runs in parallel. That is what lets a stage that
 /// carries state from one block to the next (reading the input, the
 /// long-repeat history, writing the output) stay sequential while the
-/// expensive modelling runs on every core. Each job carries a sequence
+/// expensive modeling runs on every core. Each job carries a sequence
 /// number, and results that finish early wait in `pending` until all
 /// earlier ones have been consumed.
 ///

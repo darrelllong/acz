@@ -1,0 +1,20 @@
+Build metadata for silesia-run1 (added 2026-11-08T08:03:10Z; the run directory itself is unchanged).
+Sources: git archive of 2a73c2b (v9, before 1421d67) as src/acz-v9-base; the same with acz/src/ppm.rs replaced by the forward trie v1 as src/acz-v9-tree; debc62e (the 0.5.0 port) as src/acz-port.
+Build: cd <dir> && cargo build --release (workspace profile: lto = true, codegen-units = 1), on hathor.
+rustc 1.96.0 (ac68faa20 2026-05-25)
+cargo 1.96.0 (30a34c682 2026-05-25)
+Linux hathor 7.0.0-1025-nvidia #26~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Tue Nov  3 19:27:25 UTC 2 aarch64 aarch64 aarch64 GNU/Linux
+
+Source sha256:
+857ff054110dce733c94022277350240dd0cc1005fed330b9b5e0dddfcfc93c6  src/acz-v9-base/acz/src/ppm.rs
+427ad671529cda9ab41b341bb8ba6ea33b1d80b819f0276db37e494c1f83d2e8  src/acz-v9-tree/acz/src/ppm.rs
+7a1ee5f63bf1678bbcd2639624276f1e308b8cbf2e4581e684f088152f0913e6  src/acz-port/acz/src/ppmd.rs
+
+acz-v9-base vs acz-v9-tree: files that differ:
+Files src/acz-v9-base/acz/src/ppm.rs and src/acz-v9-tree/acz/src/ppm.rs differ
+
+Binary sha256:
+19ad617d36cc2bf8dcc4b89c1effe92bca66a9925058e061777212ccf857aac2  src/acz-v9-base/target/release/acz
+79c2abfb31d3441dd9c703ae68f2550338a2b25e4eafc84295068f8f6873994c  src/acz-v9-tree/target/release/acz
+73c45dc78030ccacc9592b07c5f64b1b2909f4027371bd268c38b6eaca895964  src/acz-port/target/release/acz
+db3bd68efcf12ac74c13136e993f84006ff12010678d8026933ee40ad3061911  tree-run.sh

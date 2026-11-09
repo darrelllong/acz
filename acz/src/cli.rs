@@ -85,13 +85,13 @@ With no FILE, or when FILE is -, read standard input and write standard output.
   -0 .. -4            model (default -4); also --order=N:
                         0 = memoryless, 1 = previous byte,
                         2 = previous two bytes, binary-decomposed,
-                        3 = PPMd variant H, order 6 (PPM),
+                        3 = prediction by partial matching (PPM),
                         4 = context mixing (best compression)
   -T, --threads=N     worker threads (default, or 0: all available
                         cores)
       --block=SIZE    block size from 64K to 1G (default 16M; also
                         --block-size); larger compresses better,
-                        smaller parallelises better
+                        smaller parallelizes better
       --dedup[=SIZE]  replace long repeats (256 bytes or more) found up
                         to SIZE back (default 256M, at most 64G, larger
                         than the block) by copy commands

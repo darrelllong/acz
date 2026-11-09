@@ -1,0 +1,125 @@
+{
+  "checked_utc": "2026-11-08T21:42:40.895002+00:00",
+  "source_sha256": {
+    "acz-trie": {
+      "Cargo.toml": "ce95de030ea59a51c2a724215738de7909f0772d21ec4dddf2684eb8609452bf",
+      "Cargo.lock": "40a560210695361bff871fe8bd92beb8d6f91f75078c069ff996658962fadcae",
+      "acz/Cargo.toml": "bf6326075c6fb0b3d8dd980f664ee4e425c8e0993a920c92bece6a7f8e8558d3",
+      "arith/Cargo.toml": "025a877f003e322fcb9fe3a82d0d0a9a09c443472eb06c28cf9af051d962ea99",
+      "acz/src/cli.rs": "84cf5c5e19eab3aeda3be991b94e71cbcba3b923059c36f2308a5540502d44d9",
+      "acz/src/dedup.rs": "0413a1576d9b2e2fd25a148e46441c330462b4cdf88de46cb0947600ddb2d1eb",
+      "acz/src/format.rs": "2ba1555a35398f027fa39fc9c04772bfc505bca769e3d2bb17fd134369120acc",
+      "acz/src/cm.rs": "125a0b846382fd8e5194d52b0c249b45fb3beff1221c498bd9bb7c224d0967c7",
+      "acz/src/lib.rs": "9636297df50ca0eb7ee30d1a4d0835025fd6f9be5dd250eecb939e9a9f9a9c91",
+      "acz/src/ppm.rs": "b79c56813e1007f0708ed2f969d0a7f878cced6616278c0eca7195d51db6cd39",
+      "acz/src/crc64.rs": "1083da444474db746624c0f1db5bef20d07779f59fa0dc01659d9073c462159c",
+      "acz/src/models.rs": "47fc6f095e22e96505d73dd200b2abdcd26ac0e9218cd867fac181aeecbc242b",
+      "acz/src/bin/aczcat.rs": "d0ab64862fdb48e19471afdb81c042e0da2132eb9a9686b0e6dbc3cf3ba448ae",
+      "acz/src/bin/unacz.rs": "d8a5fe9f087224cb2f4ecec885aa7b53fbd40d4dae749692220c4d01339a6e37",
+      "acz/src/bin/acz.rs": "ff8119fd14595a243d041fd9665d81b17ae071c9b9602c65abe24f4464541ce7",
+      "arith/src/range.rs": "6be1c5340bff08ea12507f5a094fa103871bfb84e9550a0968a7bc72a80e499d",
+      "arith/src/model.rs": "91aecf183fccf02844bbfb2006ddb92bc37e56af27a6eb152f0727aaa9afa58d",
+      "arith/src/coder.rs": "3394605c32984b9464adf9792123822812a916d57ebb60e045880c3c2a041523",
+      "arith/src/lib.rs": "ab3c750a58e215200eb6803687665f8621a96042c669b8113051f6274b14dc79"
+    },
+    "acz-shkarin-c7aef7e0": {
+      "SOURCE.txt": "d2387872d2b2f3b9f0927a47ea40cc7005c4342229dd15c40063baecc5837c41",
+      "Cargo.toml": "13aba230ce5cec53c6c22ae12103a32bd3c7adcb63fa3587ea6a258fad2bc03d",
+      "Cargo.lock": "cd4b08542fbf821b6c8357a1ac87e1c3193e0f2ff1abca18453ecbffacfa841b",
+      "acz/Cargo.toml": "bf6326075c6fb0b3d8dd980f664ee4e425c8e0993a920c92bece6a7f8e8558d3",
+      "arith/Cargo.toml": "025a877f003e322fcb9fe3a82d0d0a9a09c443472eb06c28cf9af051d962ea99",
+      "acz/src/cli.rs": "84cf5c5e19eab3aeda3be991b94e71cbcba3b923059c36f2308a5540502d44d9",
+      "acz/src/dedup.rs": "0413a1576d9b2e2fd25a148e46441c330462b4cdf88de46cb0947600ddb2d1eb",
+      "acz/src/format.rs": "2ba1555a35398f027fa39fc9c04772bfc505bca769e3d2bb17fd134369120acc",
+      "acz/src/cm.rs": "125a0b846382fd8e5194d52b0c249b45fb3beff1221c498bd9bb7c224d0967c7",
+      "acz/src/lib.rs": "9636297df50ca0eb7ee30d1a4d0835025fd6f9be5dd250eecb939e9a9f9a9c91",
+      "acz/src/ppm.rs": "817aa4e02888ba3e557b34673eab71db329a18417b4596c005eaa18cab34b994",
+      "acz/src/crc64.rs": "1083da444474db746624c0f1db5bef20d07779f59fa0dc01659d9073c462159c",
+      "acz/src/models.rs": "3da3bb23d0726d4201180191d7b428baee0cb3fe81c24e90eac5b85f47a9e067",
+      "acz/src/bin/aczcat.rs": "d0ab64862fdb48e19471afdb81c042e0da2132eb9a9686b0e6dbc3cf3ba448ae",
+      "acz/src/bin/unacz.rs": "d8a5fe9f087224cb2f4ecec885aa7b53fbd40d4dae749692220c4d01339a6e37",
+      "acz/src/bin/acz.rs": "ff8119fd14595a243d041fd9665d81b17ae071c9b9602c65abe24f4464541ce7",
+      "arith/src/range.rs": "6be1c5340bff08ea12507f5a094fa103871bfb84e9550a0968a7bc72a80e499d",
+      "arith/src/model.rs": "91aecf183fccf02844bbfb2006ddb92bc37e56af27a6eb152f0727aaa9afa58d",
+      "arith/src/coder.rs": "3394605c32984b9464adf9792123822812a916d57ebb60e045880c3c2a041523",
+      "arith/src/lib.rs": "3aaa9b6c6a468064851ef79bc8b0c96c4b9aa533c62b3fce1f926b7dd4ecbc81",
+      "arith/src/multirange.rs": "19216326a4b08f0383de22e1c09813c5ac41cff12e3477b0008cfa4a3bc1dcf6"
+    },
+    "acz-port": {
+      "Cargo.toml": "52f5a7993b97b442ff1d66fc536b52fb025d2d213176d3fa6637df3f1b91e196",
+      "Cargo.lock": "02680488c5c277ceb10bc0c21eac59c894702946940d22fb4337561ea7cb7987",
+      "acz/Cargo.toml": "bf6326075c6fb0b3d8dd980f664ee4e425c8e0993a920c92bece6a7f8e8558d3",
+      "arith/Cargo.toml": "025a877f003e322fcb9fe3a82d0d0a9a09c443472eb06c28cf9af051d962ea99",
+      "acz/src/cli.rs": "3b4c3750a50d1c7f3bdf5c03a6031042c8c8a52c93cc835d3799707faf81a5cf",
+      "acz/src/dedup.rs": "bb6835f7ed7b508407b604fd5e0731d6c32d8e16d0ce3408ba41ad6d6ae88c7a",
+      "acz/src/format.rs": "02b1eab0fa21dc1d758b87d978e1d63c758af40a064e2db9db450fe730182caa",
+      "acz/src/cm.rs": "4938792b51abad51b00e910bc909f9ce7f5f9e36f119c9bf6120dba94f792572",
+      "acz/src/lib.rs": "0e86be282666b6c30d0938f4971f45a9d93ba314941e1b586879591b4aae8457",
+      "acz/src/crc64.rs": "2c4f46aa5709740afe41abfdc8a2dd91e2b849c7d6018e2e6a8ab057ff37a329",
+      "acz/src/ppmd.rs": "7a1ee5f63bf1678bbcd2639624276f1e308b8cbf2e4581e684f088152f0913e6",
+      "acz/src/models.rs": "c18635876a858d6b6c8f67806e3c47f2d21a10e205d3ba6a2affd35c73cbefab",
+      "acz/src/bin/aczcat.rs": "673324ea4d536cc3c696921ef3f242a0a5ea919e505e2fdfc75975dd164da80a",
+      "acz/src/bin/unacz.rs": "005fdd6c0aa53fb195604a7b6b66956bc7d81eae373e55404d42a1266be9b95f",
+      "acz/src/bin/acz.rs": "c4f98900b90e053e67c9f4edab11ac3f9264aadc93dcdc76b8eaf0601d85d128",
+      "arith/src/range.rs": "17db7d51a555c00418a9aab2fa3b8b4207f4b89ab52a6cd314062a9479c72643",
+      "arith/src/model.rs": "d89bee574664402215628396e301227fcbd60b2332f353d86526e2c64bb2dff3",
+      "arith/src/coder.rs": "99cff9243567f30dd422ba89ec9d334cabaa7fa57b7a1b8be69ae60e6e803806",
+      "arith/src/lib.rs": "f178d7e3d9d5ff7510ea38ca58eb3289f0cd3410c5de49f88b874db3ea2d6e70"
+    }
+  },
+  "binary_sha256": {
+    "acz-trie": "45d5c345de7e3743ae11f771b6df4f81e6b7c72e92b9e4ece668deff9aae5cdb",
+    "acz-shkarin-c7aef7e0": "28fe34c07d4eb1fabea5341acc816f687f0594caa8853b2d12a4d174852b3fd2",
+    "acz-port": "73c45dc78030ccacc9592b07c5f64b1b2909f4027371bd268c38b6eaca895964"
+  },
+  "inputs": {
+    "mr": {
+      "bytes": 9970564,
+      "sha256": "68637ed52e3e4860174ed2dc0840ac77d5f1a60abbcb13770d5754e3774d53e6"
+    },
+    "dickens": {
+      "bytes": 10192446,
+      "sha256": "b24c37886142e11d0ee687db6ab06f936207aa7f2ea1fd1d9a36763c7a507e6a"
+    },
+    "x-ray": {
+      "bytes": 8474240,
+      "sha256": "7de9fce1405dc44ae5e6813ed21cd5751e761bd4265655a005d39b9685d1c9ad"
+    },
+    "xml": {
+      "bytes": 5345280,
+      "sha256": "0e82e54e695c1938e4193448022543845b33020c8be6bf3bf3ead2224903e08c"
+    },
+    "mozilla": {
+      "bytes": 51220480,
+      "sha256": "657fc3764b0c75ac9de9623125705831ebbfbe08fed248df73bc2dc66e2a963b"
+    },
+    "samba": {
+      "bytes": 21606400,
+      "sha256": "93ba07bc44d8267789c1d911992f40b089ffa2140b4a160fac11ccae9a40e7b2"
+    },
+    "osdb": {
+      "bytes": 10085684,
+      "sha256": "60f027179302ca3ad87c58ac90b6be72ec23588aaa7a3b7fe8ecc0f11def3fa3"
+    },
+    "webster": {
+      "bytes": 41458703,
+      "sha256": "6a68f69b26daf09f9dd84f7470368553194a0b294fcfa80f1604efb11143a383"
+    },
+    "ooffice": {
+      "bytes": 6152192,
+      "sha256": "e7ee013880d34dd5208283d0d3d91b07f442e067454276095ded14f322a656eb"
+    },
+    "sao": {
+      "bytes": 7251944,
+      "sha256": "c2d0ea2cc59d4c21b7fe43a71499342a00cbe530a1d5548770e91ecd6214adcc"
+    },
+    "reymont": {
+      "bytes": 6627202,
+      "sha256": "0eac0114a3dfe6e2ee1f345a0f79d653cb26c3bc9f0ed79238af4933422b7578"
+    },
+    "nci": {
+      "bytes": 33553445,
+      "sha256": "fc63a31770947b8c2062d3b19ca94c00485a232bb91b502021948fee983e1635"
+    }
+  }
+}

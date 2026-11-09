@@ -44,13 +44,17 @@
 //!    know when the message ends (a length, an end symbol, or framing), code
 //!    strings can therefore be embedded in containers or concatenated.
 //!
-//! ## Two coders
+//! ## Three coders
 //!
-//! * [`Encoder`] / [`Decoder`] — bit-at-a-time renormalisation, any
+//! * [`Encoder`] / [`Decoder`] — bit-at-a-time renormalization, any
 //!   alphabet (multi-symbol intervals or binary events), streaming
 //!   [`std::io::Read`] input.
+//! * [`MultiRangeEncoder`] / [`MultiRangeDecoder`] — multi-symbol intervals
+//!   (totals up to 2²⁰) and binary events, one division per interval and
+//!   byte-at-a-time renormalization with carry propagation (Moffat, Neal
+//!   and Witten, 1998), decoding from a slice.
 //! * [`RangeEncoder`] / [`RangeDecoder`] — binary events only, byte-at-a-time
-//!   renormalisation with carry propagation, decoding from a slice.
+//!   renormalization with carry propagation, decoding from a slice.
 //!
 //! ## Example
 //!
@@ -67,7 +71,7 @@
 //! }
 //! let code = enc.finish().unwrap();
 //!
-//! // Decode with an identically initialised model.
+//! // Decode with an identically initialized model.
 //! let mut model = FrequencyTable::new(256);
 //! let mut dec = Decoder::new(&code[..]).unwrap();
 //! let decoded: Vec<u8> = (0..message.len())
@@ -81,8 +85,10 @@
 
 mod coder;
 mod model;
+mod multirange;
 mod range;
 
 pub use coder::{Decoder, Encoder, MAX_TOTAL};
 pub use model::{BitModel, FrequencyTable, Model, BIT_PRECISION};
+pub use multirange::{MultiRangeDecoder, MultiRangeEncoder, MULTI_MAX_TOTAL};
 pub use range::{RangeDecoder, RangeEncoder};

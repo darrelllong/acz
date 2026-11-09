@@ -1,0 +1,3 @@
+29933cf06355f4db31c8719d401c812b2a168bb121ae891ab38d9b0939c4a9d9  acz-final
+b62d417 report: describe v9 PPM and audit benchmark provenance
+rustc 1.96.0 (ac68faa20 2026-05-25)

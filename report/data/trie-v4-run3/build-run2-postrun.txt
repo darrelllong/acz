@@ -1,0 +1,23 @@
+Build metadata for silesia-run2 (added 2026-11-08T08:16:13Z; the run directory itself is unchanged).
+Sources: src/acz-v9-tree (trie v1, as in silesia-run1); src/acz-v9-tree3 and src/acz-v9-tree4: git archive of 2a73c2b with acz/src/ppm.rs replaced by trie v3 and v4; src/acz-port: debc62e (format 10).
+Build: cd <dir> && cargo build --release (workspace profile: lto = true, codegen-units = 1), on hathor.
+rustc 1.96.0 (ac68faa20 2026-05-25)
+cargo 1.96.0 (30a34c682 2026-05-25)
+
+Source sha256:
+427ad671529cda9ab41b341bb8ba6ea33b1d80b819f0276db37e494c1f83d2e8  src/acz-v9-tree/acz/src/ppm.rs
+394af6a46e33156e96c8640dd4277e8135c2d369e49303d013f96260dbccd22a  src/acz-v9-tree3/acz/src/ppm.rs
+ca81ea6cd05985c22d3e405206ef694b35fce3c81c481a32383bb9ae5c4fc834  src/acz-v9-tree4/acz/src/ppm.rs
+7a1ee5f63bf1678bbcd2639624276f1e308b8cbf2e4581e684f088152f0913e6  src/acz-port/acz/src/ppmd.rs
+
+acz-v9-base vs acz-v9-tree3: files that differ:
+Files src/acz-v9-base/acz/src/ppm.rs and src/acz-v9-tree3/acz/src/ppm.rs differ
+acz-v9-base vs acz-v9-tree4: files that differ:
+Files src/acz-v9-base/acz/src/ppm.rs and src/acz-v9-tree4/acz/src/ppm.rs differ
+
+Binary sha256:
+79c2abfb31d3441dd9c703ae68f2550338a2b25e4eafc84295068f8f6873994c  src/acz-v9-tree/target/release/acz
+8ef7c58cea4aa353b58b46324da399c61782b305d4c3d2c33de16c668df7c7f2  src/acz-v9-tree3/target/release/acz
+dd189122579bd7cd890fb76c560a6dfd9a4ca472d4cc8236c9cd260f87ac3e3e  src/acz-v9-tree4/target/release/acz
+73c45dc78030ccacc9592b07c5f64b1b2909f4027371bd268c38b6eaca895964  src/acz-port/target/release/acz
+ef86e60fa2430895be327c84ae7f867292cdfbfb9df6e294d23db3134c707f50  tree-run2.sh

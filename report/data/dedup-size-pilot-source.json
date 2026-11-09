@@ -1,0 +1,25 @@
+{
+  "scope": "Exploratory threshold ablation; frozen development snapshot, not release evidence",
+  "base_commit": "2a73c2b4cde018eec7e086b7acc1711f43f703d1",
+  "files": {
+    "acz/src/cm.rs": "4938792b51abad51b00e910bc909f9ce7f5f9e36f119c9bf6120dba94f792572",
+    "acz/src/models.rs": "c18635876a858d6b6c8f67806e3c47f2d21a10e205d3ba6a2affd35c73cbefab",
+    "acz/src/ppmd.rs": "65227da3cdc4d78d7ae2011f1a5de5fe5d63c74e0c4fcd69d1fe4773f1a6db0b",
+    "acz/src/dedup.rs": "bb6835f7ed7b508407b604fd5e0731d6c32d8e16d0ce3408ba41ad6d6ae88c7a",
+    "arith/src/coder.rs": "99cff9243567f30dd422ba89ec9d334cabaa7fa57b7a1b8be69ae60e6e803806",
+    "arith/src/range.rs": "17db7d51a555c00418a9aab2fa3b8b4207f4b89ab52a6cd314062a9479c72643",
+    "arith/src/lib.rs": "f178d7e3d9d5ff7510ea38ca58eb3289f0cd3410c5de49f88b874db3ea2d6e70",
+    "arith/src/model.rs": "d89bee574664402215628396e301227fcbd60b2332f353d86526e2c64bb2dff3"
+  },
+  "block_bytes": 16777216,
+  "window_bytes": 268435456,
+  "thresholds": [
+    0,
+    32,
+    64,
+    128,
+    256
+  ],
+  "anchor_bits": 5,
+  "seed_bytes": 32
+}

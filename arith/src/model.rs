@@ -237,7 +237,7 @@ impl Model for FrequencyTable {
 pub const BIT_PRECISION: u32 = 16;
 
 /// Adaptive probability for a binary event — the "skew" parameter of
-/// Langdon's binary arithmetic code, generalised from powers of two to a
+/// Langdon's binary arithmetic code, generalized from powers of two to a
 /// 16-bit fixed-point probability.
 ///
 /// After each event the estimate moves a fraction `2^-SHIFT` of the way

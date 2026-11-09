@@ -1,0 +1,146 @@
+{
+  "dickens/new": {
+    "bytes": 2326491,
+    "sha256": "8202cbd27241b556cef6d75a66bccb7a487a8ab0089e204779e7f8c3e159919c"
+  },
+  "dickens/trie": {
+    "bytes": 2426026,
+    "sha256": "58433d40b72124f0e4900eaa45d29fcfce4bd04a8f6e4460d0edb0d4e2443cf4"
+  },
+  "dickens/port": {
+    "bytes": 2296720,
+    "sha256": "f7829c1d2461561f634097a239163246a3f1471b0efce389a39d1ca8f09da5de"
+  },
+  "mozilla/new": {
+    "bytes": 16705000,
+    "sha256": "9d2dabca56789376fe4e8d16599ada06d75aebd6967b5ae1a5d9fb0658311f3c"
+  },
+  "mozilla/trie": {
+    "bytes": 17374252,
+    "sha256": "3cd00cbfb8500a102a3dcc8b401da74c20e4727481013f3df4b1f79281fafff8"
+  },
+  "mozilla/port": {
+    "bytes": 16150115,
+    "sha256": "ce7d739f51e13718c7d8829960c6a23d114550b450179bcc31a0a587cc602d6a"
+  },
+  "mr/new": {
+    "bytes": 2316515,
+    "sha256": "0d49fd349653835aed3c558045ce96f8746a79bf5cb0ba0a503acf9078138575"
+  },
+  "mr/trie": {
+    "bytes": 2332389,
+    "sha256": "84676823e59a0b57d7f2ccb656a6e0a64de7d051970814e6340425c0a88ed41e"
+  },
+  "mr/port": {
+    "bytes": 2301075,
+    "sha256": "14017893158de7742a1e2bae1945fe64568b64d91b1c96592aeae0f969efa503"
+  },
+  "nci/new": {
+    "bytes": 2373465,
+    "sha256": "ac2869d58e051b84a63a8c12576b3f67f7476dd0d058457233d3eb747881e6af"
+  },
+  "nci/trie": {
+    "bytes": 2413707,
+    "sha256": "d1b6eeedb8d26ac78baacec3bc8baf49c3cf4a81d52592b5c9c9e668cd8cc180"
+  },
+  "nci/port": {
+    "bytes": 2314376,
+    "sha256": "53e745cd5dfb086408e0605dbe40e942616d6846a0659cdd080a09a8f53acacc"
+  },
+  "ooffice/new": {
+    "bytes": 2609473,
+    "sha256": "22122ed44eb6b13a05d7ae116cbbfb4b0941c836549cc58289676c746f888e6c"
+  },
+  "ooffice/trie": {
+    "bytes": 2763454,
+    "sha256": "80feb9c8fece09fa53026fa1e161647071a26d7d60d5fb4c4917f40b2e6e536c"
+  },
+  "ooffice/port": {
+    "bytes": 2543349,
+    "sha256": "484357fcb643a7aaac2388c6e440c6aa8fa0eab6c066bfff96a9bd29b38f4eed"
+  },
+  "osdb/new": {
+    "bytes": 2435096,
+    "sha256": "90337d0578c27c4e349efb3532751fd0f6edf84d848fe98f3dfef3b2f73243cb"
+  },
+  "osdb/trie": {
+    "bytes": 2551349,
+    "sha256": "5301ad22de9762b1b6ceb9c7a4891e9f7dee6546144686f601bde4d5bfea646a"
+  },
+  "osdb/port": {
+    "bytes": 2386626,
+    "sha256": "72637924b2d13263fdb93229920c794055dc81f881f74f6d1074e8c928cae902"
+  },
+  "reymont/new": {
+    "bytes": 1140335,
+    "sha256": "ac44883878689bee34156f65084945ba4ca9524c8dd63a0c44b5cfbd65633004"
+  },
+  "reymont/trie": {
+    "bytes": 1168498,
+    "sha256": "e4bbd68d6c5e1a8ba5627aa8842503b308e4274f911e9e2231d129da093a58ad"
+  },
+  "reymont/port": {
+    "bytes": 1141389,
+    "sha256": "5da658c6b3175535f4c20f93c04cf66836e41a3382602f9005a41efa746d71ce"
+  },
+  "samba/new": {
+    "bytes": 4306107,
+    "sha256": "f53c0c64af6a3877eb15eb9982058007e321516ebee50d33546ad02be1932b18"
+  },
+  "samba/trie": {
+    "bytes": 4438401,
+    "sha256": "f3c72a203f379fe59d58f865a8d3f937b3c4b9d068933ec9680f0b2f1db4d9dd"
+  },
+  "samba/port": {
+    "bytes": 4204881,
+    "sha256": "81354273a17a5f6f6715bf9f908201036101492acb69778467170864c43168fc"
+  },
+  "sao/new": {
+    "bytes": 4830033,
+    "sha256": "4653f4062cad5466e8db36734d28807c16883a53585acdc31067d912df91d32e"
+  },
+  "sao/trie": {
+    "bytes": 5008065,
+    "sha256": "b178179e699cb23bc98df233b13293c46c589ec4d075ffa9f76fdfffbc379a64"
+  },
+  "sao/port": {
+    "bytes": 4757989,
+    "sha256": "81e1e1f0628c4f38ea6da72cc2c584843b89774cf7fda603180f42f36406b6b4"
+  },
+  "webster/new": {
+    "bytes": 7093663,
+    "sha256": "9dbfefa2c96acdee57ebbacc614da0280cf433dfcdfd3ad5382313fc13cc1d4b"
+  },
+  "webster/trie": {
+    "bytes": 7409466,
+    "sha256": "75206ef57e49ac0f2a60fc8a8335becf0e2bc143e9123408f7ba0a9e653dbe2a"
+  },
+  "webster/port": {
+    "bytes": 6780743,
+    "sha256": "fc51121a4e4aac1ab0cf3500ea32de7d4880d037bb3097ae4a06efd4ccb8108a"
+  },
+  "xml/new": {
+    "bytes": 512940,
+    "sha256": "1d6f4c5f62d8b53a706df922e3138989cc6350850f9cd15ca6d39ededde62a41"
+  },
+  "xml/trie": {
+    "bytes": 532340,
+    "sha256": "23a948315c52c908da09f0c05b43d53b2ce444178582d390b4c7ba1f9218fb5a"
+  },
+  "xml/port": {
+    "bytes": 496399,
+    "sha256": "767d76b9d2040ef0a30755201d91889e070c6b6ab9a0d734b01a641f351afbfc"
+  },
+  "x-ray/new": {
+    "bytes": 3952842,
+    "sha256": "6560d238f78edd1a72e0b40b61e2f1d45f3c8ed3156d28f81874b39c1b1b6553"
+  },
+  "x-ray/trie": {
+    "bytes": 3995531,
+    "sha256": "d760206474dc4980c1b0b1582fe1f68b20228be75b140f393a8578be64717f68"
+  },
+  "x-ray/port": {
+    "bytes": 3851235,
+    "sha256": "b6c25c2b2dcad94c87765c639ccb31803607c7db06b4fc1d56c1270e97262f5e"
+  }
+}

@@ -4,7 +4,7 @@
 //
 // Dedicated to the memory of my colleague Glen G. Langdon
 
-//! The arithmetic coding engine: interval narrowing, renormalisation,
+//! The arithmetic coding engine: interval narrowing, renormalization,
 //! carry (pending-bit) handling and termination.
 
 use std::io::{self, Read, Write};
@@ -22,7 +22,7 @@ const THREE_QUARTERS: u64 = HALF + QUARTER;
 /// Largest permissible `total` passed to [`Encoder::encode`] /
 /// [`Decoder::target`].
 ///
-/// After renormalisation the interval width always exceeds a quarter of the
+/// After renormalization the interval width always exceeds a quarter of the
 /// code space (2³⁰), so any `total ≤ 2³⁰` guarantees every symbol with a
 /// non-zero frequency receives a non-empty sub-interval, and every product
 /// `width × cum` is at most 2⁶² and fits in a `u64`.
@@ -233,7 +233,7 @@ impl<W: Write> Encoder<W> {
     ///
     /// The encoder emits the full 32-bit value of `low` (plus any pending
     /// bits). `low` lies in the final interval, and because the decoder
-    /// reads exactly 32 bits up front plus one per renormalisation shift, it
+    /// reads exactly 32 bits up front plus one per renormalization shift, it
     /// will consume exactly the bits written here — never more. The final
     /// partial byte is zero-padded; the decoder discards those pad bits.
     pub fn finish(mut self) -> io::Result<W> {

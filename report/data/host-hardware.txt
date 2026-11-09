@@ -1,0 +1,35 @@
+Hardware identity of benchmark host hathor
+Collected 2026-11-07T11:46:52-08:00
+This record was collected after the timing runs. It establishes hardware identity; maximum frequencies below are capability reports, not measured benchmark frequencies.
+
+sys_vendor: NVIDIA
+product_name: NVIDIA_DGX_Spark
+board_vendor: NVIDIA
+board_name: P4242
+CPU MODELNAME      MAXMHZ
+  0 Cortex-A725 2808.0000
+  1 Cortex-A725 2808.0000
+  2 Cortex-A725 2808.0000
+  3 Cortex-A725 2808.0000
+  4 Cortex-A725 2808.0000
+  5 Cortex-X925 3900.0000
+  6 Cortex-X925 3900.0000
+  7 Cortex-X925 3900.0000
+  8 Cortex-X925 3900.0000
+  9 Cortex-X925 3900.0000
+ 10 Cortex-A725 2808.0000
+ 11 Cortex-A725 2808.0000
+ 12 Cortex-A725 2808.0000
+ 13 Cortex-A725 2808.0000
+ 14 Cortex-A725 2808.0000
+ 15 Cortex-X925 3900.0000
+ 16 Cortex-X925 3900.0000
+ 17 Cortex-X925 3900.0000
+ 18 Cortex-X925 3900.0000
+ 19 Cortex-X925 3900.0000
+Model name:                              Cortex-X925
+Core(s) per socket:                      10
+Model name:                              Cortex-A725
+Core(s) per socket:                      10
+MemTotal:       127598636 kB
+NVIDIA GB10

@@ -1,0 +1,30 @@
+{
+  "experiment": "run11",
+  "source_snapshot": "a8a56841",
+  "configurations": [
+    "base",
+    "par",
+    "bin6",
+    "inh",
+    "see2",
+    "bin6+par",
+    "bin6+par+inh",
+    "bin6+par+inh+see2"
+  ],
+  "notes": [
+    "Raw code sizes with the old general interval coder. Fixed-order single size run, not comparative CPU timings.",
+    "All output contents independently hashed after the run; recorded per-byte and canonical verification, not independent re-decoding.",
+    "33 input entries, 32 unique contents; duplicate pic/ptt5 weighting retained.",
+    "Exact historical sources are privately retained and identified by the environment/binding records."
+  ],
+  "files": {
+    "bindings.json": "4af8e2421deb871369aac1425416860fd7b261b54b82fb7d441bb189511fbf26",
+    "code-sha256.txt": "5337e1847911c8a3872881934594ca7835d7ee222d93383fb5e9f84cf0a72411",
+    "done": "d117fa006ba9208500b2930ce69cbde436c647afa917cb7396a9bc9111a46dd2",
+    "env.txt": "adc3422a66894189b7cc0df029d6e75aec1d5622ce6b8a3bc8536f31ab08bdab",
+    "inputs.json": "6ece36678414300a0fd35cd3ecb7e8c10412ea28eba7ff265f915a7480dc2f26",
+    "outputs.json": "c127476d8d7ed652c073c288e4c2abd4e8c6ad7d202c0609ebc4d24cf1d69737",
+    "runner.sh": "b70034645859226ba5044877d251b290cdcad115378757daa2fe0c2592df145e",
+    "sizes.tsv": "b557a4f51d0669b56e24df0c25310332da9e7c56dfcab234de629542d172a710"
+  }
+}

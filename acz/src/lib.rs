@@ -14,7 +14,7 @@
 //!   block-buffer storage; the budget is not a limit on total process memory.
 //! * [`models`] holds the byte models (orders 0, 1, 2, PPM and context
 //!   mixing).
-//! * [`ppmd`] is PPMd variant H, the model behind model 3.
+//! * [`ppm`] is prediction by partial matching, the model behind model 3.
 //! * [`cm`] is the context-mixing predictor behind model 4.
 //! * [`dedup`] is the optional long-repeat removal ahead of the block coders.
 //! * [`crc64`] computes CRC-64/XZ.
@@ -28,7 +28,7 @@ pub mod crc64;
 pub mod dedup;
 pub mod format;
 pub mod models;
-pub mod ppmd;
+pub mod ppm;
 
 pub use format::{compress, decompress, DecodeOptions, Options, Stats};
 pub use models::Order;

@@ -1,0 +1,167 @@
+{
+  "calgary/bib": {
+    "expected": "0f1a13936e358191533aca4a32ff42906d1b7f641f3afb0a90458b2410419fcf",
+    "actual": "0f1a13936e358191533aca4a32ff42906d1b7f641f3afb0a90458b2410419fcf",
+    "bytes": 111261
+  },
+  "calgary/book1": {
+    "expected": "9ffa47cd93bccd732f20e0c304203cfbc1b8a91bedac536e2d8f6051003d9951",
+    "actual": "9ffa47cd93bccd732f20e0c304203cfbc1b8a91bedac536e2d8f6051003d9951",
+    "bytes": 768771
+  },
+  "calgary/book2": {
+    "expected": "c8538730cf2ce6a243acf3eb299c43d619b5c695d892f4884df796c13081fdf8",
+    "actual": "c8538730cf2ce6a243acf3eb299c43d619b5c695d892f4884df796c13081fdf8",
+    "bytes": 610856
+  },
+  "calgary/geo": {
+    "expected": "913ff6f45610599020c02f543a0d5a1f46cf772412e25a568b683d23db8c447d",
+    "actual": "913ff6f45610599020c02f543a0d5a1f46cf772412e25a568b683d23db8c447d",
+    "bytes": 102400
+  },
+  "calgary/news": {
+    "expected": "7f0482f9774681429eb7021050c17966f6acf19450e170de6611e1ed953d42e8",
+    "actual": "7f0482f9774681429eb7021050c17966f6acf19450e170de6611e1ed953d42e8",
+    "bytes": 377109
+  },
+  "calgary/obj1": {
+    "expected": "8c06109caffd7e794516e4ed10095b0238ea8df63ed66840907cd4dd23e2cf72",
+    "actual": "8c06109caffd7e794516e4ed10095b0238ea8df63ed66840907cd4dd23e2cf72",
+    "bytes": 21504
+  },
+  "calgary/obj2": {
+    "expected": "8b3e7f028bfefaebdd48a791060a1ab11d1ffd9bf27e0d63b15e58dda0deb984",
+    "actual": "8b3e7f028bfefaebdd48a791060a1ab11d1ffd9bf27e0d63b15e58dda0deb984",
+    "bytes": 246814
+  },
+  "calgary/paper1": {
+    "expected": "8d9c42d9fa58b5bce1a8b5fae3cc27c9eb7cc7a032bc12a633d44e816497e143",
+    "actual": "8d9c42d9fa58b5bce1a8b5fae3cc27c9eb7cc7a032bc12a633d44e816497e143",
+    "bytes": 53161
+  },
+  "calgary/paper2": {
+    "expected": "dc4b9cf68094c632a920f4e76d0a0a8b9617b624c36928ca46a5d29798c5bbbe",
+    "actual": "dc4b9cf68094c632a920f4e76d0a0a8b9617b624c36928ca46a5d29798c5bbbe",
+    "bytes": 82199
+  },
+  "calgary/paper3": {
+    "expected": "c3e1ba94849992147cf68531311cf6512c9032b88f548d3e2d62cb659aef19d8",
+    "actual": "c3e1ba94849992147cf68531311cf6512c9032b88f548d3e2d62cb659aef19d8",
+    "bytes": 46526
+  },
+  "calgary/paper4": {
+    "expected": "aeecc3ff5b2e497e35fbd2d2190627fff4818dabf7aee9734ac090c21b04739b",
+    "actual": "aeecc3ff5b2e497e35fbd2d2190627fff4818dabf7aee9734ac090c21b04739b",
+    "bytes": 13286
+  },
+  "calgary/paper5": {
+    "expected": "7a4b1ee6aa419ca362a9bbae383287fe8fee4324c9d6aefa7e94b6d845452ee8",
+    "actual": "7a4b1ee6aa419ca362a9bbae383287fe8fee4324c9d6aefa7e94b6d845452ee8",
+    "bytes": 11954
+  },
+  "calgary/paper6": {
+    "expected": "8f38dd101a4e0c0e4acefec93d5da8198db593557e9e0019140e2dff24b1b080",
+    "actual": "8f38dd101a4e0c0e4acefec93d5da8198db593557e9e0019140e2dff24b1b080",
+    "bytes": 38105
+  },
+  "calgary/pic": {
+    "expected": "0ec3a75089bb52342813496b17e51377bc9eba3cb519a444d67025354841d650",
+    "actual": "0ec3a75089bb52342813496b17e51377bc9eba3cb519a444d67025354841d650",
+    "bytes": 513216
+  },
+  "calgary/progc": {
+    "expected": "151377a9d6aa9b7e872000269707a15e2b038c826340628e6f4d8b4db9ec3c19",
+    "actual": "151377a9d6aa9b7e872000269707a15e2b038c826340628e6f4d8b4db9ec3c19",
+    "bytes": 39611
+  },
+  "calgary/progl": {
+    "expected": "9388db0cfb71ffbe5687d381819a5ff69cdd992d6931e0cf81a310a1caed0ba0",
+    "actual": "9388db0cfb71ffbe5687d381819a5ff69cdd992d6931e0cf81a310a1caed0ba0",
+    "bytes": 71646
+  },
+  "calgary/progp": {
+    "expected": "d0cd70ab5f7381a8584b25fa73b3608571a17ee1042cc5c546f63b904614d1bc",
+    "actual": "d0cd70ab5f7381a8584b25fa73b3608571a17ee1042cc5c546f63b904614d1bc",
+    "bytes": 49379
+  },
+  "calgary/trans": {
+    "expected": "117a00c6af3e1c57f20013a8f1b468158f70634f685a348bedb7e4069cdd576a",
+    "actual": "117a00c6af3e1c57f20013a8f1b468158f70634f685a348bedb7e4069cdd576a",
+    "bytes": 93695
+  },
+  "cantrbry/alice29.txt": {
+    "expected": "7467306ee0feed4971260f3c87421154a05be571d944e9cb021a5713700c38f0",
+    "actual": "7467306ee0feed4971260f3c87421154a05be571d944e9cb021a5713700c38f0",
+    "bytes": 152089
+  },
+  "cantrbry/asyoulik.txt": {
+    "expected": "eaa3526fe53859f34ecdf255712f9ecf0b2c903451d4755b2edaa2e2599cb0fc",
+    "actual": "eaa3526fe53859f34ecdf255712f9ecf0b2c903451d4755b2edaa2e2599cb0fc",
+    "bytes": 125179
+  },
+  "cantrbry/cp.html": {
+    "expected": "e0cd21cef5b6c4069461e949be100080c3ce887de6f1dd8626c480528efaaf61",
+    "actual": "e0cd21cef5b6c4069461e949be100080c3ce887de6f1dd8626c480528efaaf61",
+    "bytes": 24603
+  },
+  "cantrbry/fields.c": {
+    "expected": "85d73e354cc50cec76cb5a50537cf8dc035f8cbb8480f9e1cbe2f7d6c23393c7",
+    "actual": "85d73e354cc50cec76cb5a50537cf8dc035f8cbb8480f9e1cbe2f7d6c23393c7",
+    "bytes": 11150
+  },
+  "cantrbry/grammar.lsp": {
+    "expected": "1b0805dfc0ae706b35aac2bb4e15f02485efd24dda5dbd29de7b2f84d1a88c15",
+    "actual": "1b0805dfc0ae706b35aac2bb4e15f02485efd24dda5dbd29de7b2f84d1a88c15",
+    "bytes": 3721
+  },
+  "cantrbry/kennedy.xls": {
+    "expected": "9af47239ca29dfe20e633f80bbbb9a4cc9783d0803d7b2b5626f42e4c3790420",
+    "actual": "9af47239ca29dfe20e633f80bbbb9a4cc9783d0803d7b2b5626f42e4c3790420",
+    "bytes": 1029744
+  },
+  "cantrbry/lcet10.txt": {
+    "expected": "5314ba1dbb03f471df88bec6cd120a938ef60d0fd3511c5c1dce61bf7463245f",
+    "actual": "5314ba1dbb03f471df88bec6cd120a938ef60d0fd3511c5c1dce61bf7463245f",
+    "bytes": 426754
+  },
+  "cantrbry/plrabn12.txt": {
+    "expected": "07e2e0b461af78c7c647cb53dab39de560198e16f799b4516eccf0fbd69f764c",
+    "actual": "07e2e0b461af78c7c647cb53dab39de560198e16f799b4516eccf0fbd69f764c",
+    "bytes": 481861
+  },
+  "cantrbry/ptt5": {
+    "expected": "0ec3a75089bb52342813496b17e51377bc9eba3cb519a444d67025354841d650",
+    "actual": "0ec3a75089bb52342813496b17e51377bc9eba3cb519a444d67025354841d650",
+    "bytes": 513216
+  },
+  "cantrbry/sum": {
+    "expected": "ee5733cd76ecc2f9d8ff156adc3c02a7a851051dcf43a2d56ff4ee4ff606bdb3",
+    "actual": "ee5733cd76ecc2f9d8ff156adc3c02a7a851051dcf43a2d56ff4ee4ff606bdb3",
+    "bytes": 38240
+  },
+  "cantrbry/xargs.1": {
+    "expected": "c58aeb5d2d1e12751d47e7412b45784405fc30a5671b03d480fa05776e183619",
+    "actual": "c58aeb5d2d1e12751d47e7412b45784405fc30a5671b03d480fa05776e183619",
+    "bytes": 4227
+  },
+  "enwik8/enwik8": {
+    "expected": "2b49720ec4d78c3c9fabaee6e4179a5e997302b3a70029f30f2d582218c024a8",
+    "actual": "2b49720ec4d78c3c9fabaee6e4179a5e997302b3a70029f30f2d582218c024a8",
+    "bytes": 100000000
+  },
+  "large/bible.txt": {
+    "expected": "4e0a7e8dff7d9c82dbded57305c0ca3cdd3c4ca014db27121782fe9710f4723f",
+    "actual": "4e0a7e8dff7d9c82dbded57305c0ca3cdd3c4ca014db27121782fe9710f4723f",
+    "bytes": 4047392
+  },
+  "large/E.coli": {
+    "expected": "9125dfd87315961ef4286f3856098069e050cc3a2abe65735fe43e69d1996f40",
+    "actual": "9125dfd87315961ef4286f3856098069e050cc3a2abe65735fe43e69d1996f40",
+    "bytes": 4638690
+  },
+  "large/world192.txt": {
+    "expected": "1aebdc97d29904b25791da9aa32be90b69d7da6dc0ac9b95512ed27ed40d2112",
+    "actual": "1aebdc97d29904b25791da9aa32be90b69d7da6dc0ac9b95512ed27ed40d2112",
+    "bytes": 2473400
+  }
+}

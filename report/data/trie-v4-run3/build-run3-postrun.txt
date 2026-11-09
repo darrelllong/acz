@@ -1,0 +1,10 @@
+Build metadata for silesia-run3 (added 2026-11-08T08:33:57Z; the run directory itself is unchanged).
+The binaries are those of silesia-run2.build-20261108.txt: src/acz-v9-base (2a73c2b, v9) and src/acz-v9-tree4 (2a73c2b with acz/src/ppm.rs replaced by trie v4).
+rustc 1.96.0 (ac68faa20 2026-05-25)
+
+857ff054110dce733c94022277350240dd0cc1005fed330b9b5e0dddfcfc93c6  src/acz-v9-base/acz/src/ppm.rs
+ca81ea6cd05985c22d3e405206ef694b35fce3c81c481a32383bb9ae5c4fc834  src/acz-v9-tree4/acz/src/ppm.rs
+19ad617d36cc2bf8dcc4b89c1effe92bca66a9925058e061777212ccf857aac2  src/acz-v9-base/target/release/acz
+dd189122579bd7cd890fb76c560a6dfd9a4ca472d4cc8236c9cd260f87ac3e3e  src/acz-v9-tree4/target/release/acz
+1ff6cac74950752aa0b8ea218a7f92b017239080c914fbd070d1e731eec6dfd9  tree-run3.sh
+Files src/acz-v9-base/acz/src/ppm.rs and src/acz-v9-tree4/acz/src/ppm.rs differ

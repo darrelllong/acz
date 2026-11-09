@@ -1,0 +1,8 @@
+{
+  "verified_rows": 190,
+  "verified_inputs": 12,
+  "expected_rows": 190,
+  "source": "frozen development snapshot",
+  "timings": "exploratory wall time only; not publication timings",
+  "results_sha256": "e56f0eb0db82a53760adfae798419baba859757be8ab0bd5af51f7bb577f1256"
+}

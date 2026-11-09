@@ -1,0 +1,30 @@
+#!/bin/bash
+# Development-corpus size run of the frozen v6 source c9b15f27 (d4521899 with
+# documentation corrections and --cost in bytes; outputs expected identical): every configuration encoded,
+# decoded and compared (with the canonical-end check), code strings dumped,
+# hashed and kept. Not a timing run: encode_s and verify_s are reported
+# separately and only for orientation.   v6-run-c9b15f27.sh OUTDIR
+#
+# The snapshot src/claude-v6-frozen-c9b15f27 is unmodified (MANIFEST.sha256).
+# It is built in src/claude-v6-build-c9b15f27, a copy whose Cargo.toml points
+# at hathor's arith (../acz-v9-base/arith; same code, the dedication comment
+# differs) and whose Cargo.lock cargo rewrote for that crate's version; both
+# differences are recorded below.
+set -u -o pipefail
+O=$1; case $O in /*) ;; *) echo "OUTDIR must be absolute" >&2; exit 2;; esac; S=~/acz-eval/devcorpus; T=~/acz-eval/tree-20261108/src
+F=$T/claude-v6-frozen-c9b15f27; R=$T/claude-v6-build-c9b15f27; B=$R/target/release/devbench
+A=$T/acz-v9-base
+mkdir -- "$O" || exit 2
+CONFIGS="base bin6+par+inh+seef bin6+par+inh+seef+inhn bin6+par+inh+seef+inhd bin6+inhn bin6+inhd"
+{ date -u; uname -a; rustc --version
+  sha256sum $B $F/MANIFEST.sha256 $F/src/ppm6.rs $F/src/bin/devbench.rs $R/Cargo.toml $R/Cargo.lock "$0"
+  (cd $F && sha256sum -c MANIFEST.sha256 | grep -vc ': OK$' | sed 's/^/snapshot manifest mismatches: /')
+  diff -r $F/src $R/src > /dev/null && echo "build src identical to snapshot src"
+  echo "build differs from snapshot:"; diff $F/Cargo.toml $R/Cargo.toml; diff $F/Cargo.lock $R/Cargo.lock
+  echo "arith dependency:"; sha256sum $A/Cargo.toml $A/arith/Cargo.toml $A/arith/src/*.rs
+  echo "configs: $CONFIGS"; echo "inputs: $S (files-sha256.txt there)"
+  echo "other processes on core 7:"; ps -eo psr,pcpu,comm --no-headers | awk '$1==7 && $2>1.0'; } > "$O/env.txt"
+cd $S && find cantrbry large calgary enwik8 -type f | sort | xargs taskset -c 7 $B --verify --dump "$O/code" $CONFIGS -- > "$O/sizes.tsv"; echo "status $?" >> "$O/env.txt"
+(cd "$O/code" && find . -type f | sort | xargs sha256sum) > "$O/code-sha256.txt"
+chmod -R a-w "$O/code"
+echo done > "$O/done"

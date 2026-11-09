@@ -1,0 +1,3 @@
+85f468bbaa75cd2b7ebb6716616c53ca2c44c54d8b9b25f23e83164176e09c9c  acz-v9
+e7c26a1 Format v9: PPM as -3, context mixing as -4 (the default)
+rustc 1.96.0 (ac68faa20 2026-05-25)

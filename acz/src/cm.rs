@@ -156,7 +156,7 @@ fn hist_index(slot: u32) -> usize {
 /// The history is *semi-stationary*: a 1 adds to `n1` and, if `n0 > 2`,
 /// cuts `n0` to `n0 / 2 + 1` (and the mirror image for a 0). Old evidence
 /// against the latest outcome is discounted but not forgotten, so a
-/// context that changes its behaviour is believed again within a few bits.
+/// context that changes its behavior is believed again within a few bits.
 #[inline]
 fn hist_update(slot: &mut u32, bit: bool) {
     let p = i64::from(*slot >> 16);
@@ -472,7 +472,7 @@ impl MatchModel {
     /// ends. Without a match, the table gives the last position after the
     /// same hash, and the match is taken if the bytes before it really
     /// agree for at least `MATCH_MINLEN` (a hash can collide). Its length
-    /// is counted backwards, up to 32. The table then records the current
+    /// is counted backward, up to 32. The table then records the current
     /// position under `h`, so the most recent occurrence is always the one
     /// found.
     fn byte_update(&mut self, byte: u8, h: u32) {

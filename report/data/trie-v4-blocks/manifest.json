@@ -1,0 +1,15 @@
+{
+  "experiment": "Silesia per 16 MiB block: original v9 PPM and frozen forward-trie v4 (claude-tree bench compare), code sizes, model restarts, identity, v4 round trip",
+  "host": "hathor, Cortex-X925 core 7 (taskset -c 7)",
+  "source_identity": {
+    "v4_ppm_sha256": "ca81ea6cd05985c22d3e405206ef694b35fce3c81c481a32383bb9ae5c4fc834",
+    "bench_binary_sha256": "0ccf00bce4de188cfbb039dac55e36db4334e1f531ff8ec161911079a7db4503"
+  },
+  "note": "compare.tsv and env.txt are copied unchanged from hathor:~/acz-eval/tree-20261108/bench-run1; run.sh is bench-run.sh there; bench.rs is the bench source that was built for the run (sha256 recorded in env.txt).",
+  "files": {
+    "bench.rs": "4255c9cb41ca69f630f0eb67c8ccfdf8a97c456004d4231d32ca6b506c0301a9",
+    "compare.tsv": "af3edc6480d5d4465c1894ef79c119a6960d7236814fbf4d78db7b87b77fef76",
+    "env.txt": "28564ba72d94179a53d0a0f465e369e4b8a4b69af1dd807ed94c8ed5c2dba337",
+    "run.sh": "1f8665496a78ff0430f508ecddc653037b486c0befa74393a81a1c4973709fdc"
+  }
+}

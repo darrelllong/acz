@@ -4,10 +4,10 @@
 //
 // Dedicated to the memory of my colleague Glen G. Langdon
 
-//! A binary range coder with byte-wise renormalisation.
+//! A binary range coder with byte-wise renormalization.
 //!
 //! Like [`crate::Encoder`], this splits an interval in proportion to each
-//! event's probability. Here each event is binary and normalisation shifts
+//! event's probability. Here each event is binary and normalization shifts
 //! a whole byte at a time (base 256), as advocated by Schindler (1998),
 //! Moffat–Neal–Witten (1998, §4.2) and Said (2004,
 //! §2.3.1). Byte-at-a-time output removes the per-bit loop of the classic
@@ -24,7 +24,7 @@
 //! product, so both sub-intervals are non-empty for every `p₀ ∈ [1, 2¹⁶)`.
 //!
 //! **Termination.** [`RangeEncoder::finish`] flushes five bytes; the decoder
-//! reads five bytes up front and one per renormalisation, so it consumes
+//! reads five bytes up front and one per renormalization, so it consumes
 //! exactly the bytes the encoder wrote (given the same event sequence).
 //!
 //! **References.**
@@ -151,7 +151,7 @@ impl<W: Write> RangeEncoder<W> {
     /// Write the final low endpoint and return the sink. Five shifts
     /// account for the cached byte and the four-byte endpoint, matching
     /// the decoder's five-byte initial read. Together with one read per
-    /// normalisation, this lets a known event count delimit the payload.
+    /// normalization, this lets a known event count delimit the payload.
     pub fn finish(mut self) -> io::Result<W> {
         if self.poisoned {
             return Err(crate::coder::poisoned_error());
@@ -219,7 +219,7 @@ impl<'a> RangeDecoder<'a> {
     /// `code` is the code value relative to the interval's low endpoint.
     /// Comparing it with the encoder's split selects the same half; for
     /// a one, subtracting the split moves the origin to the new endpoint.
-    /// Normalisation shifts both `range` and this relative value, reading
+    /// Normalization shifts both `range` and this relative value, reading
     /// exactly one byte for each shift performed by the encoder.
     #[inline]
     fn decode_valid(&mut self, p0: u32) -> bool {

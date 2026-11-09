@@ -1,0 +1,5 @@
+b42d490
+f40f76a3d02f91118d4276c4b474352a7c7a6b65b4b3a30123ad38c53ad2632f  /home/darrell/acz-eval/src/acz/target/release/acz
+3dff32e02ab0caea847974e2877c26eada8a49adcf6e5ddeb546eb396e76dd3c  /home/darrell/acz-eval/src/acz/target/release/examples/ppm_restarts
+7-Zip 23.01 (arm64) : Copyright (c) 1999-2023 Igor Pavlov : 2023-06-20
+Linux hathor 7.0.0-1025-nvidia #26~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Tue Nov  3 19:27:25 UTC 2 aarch64 aarch64 aarch64 GNU/Linux

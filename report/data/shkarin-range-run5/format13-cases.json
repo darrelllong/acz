@@ -1,0 +1,110 @@
+[
+  {
+    "file": "dickens",
+    "output_sha256": "c4efd206569e7c1a00f9e0be1542690f1f75db96b0ddb8cf9f959bbc942a4e5f",
+    "bytes": 2326491,
+    "input_sha256": "b24c37886142e11d0ee687db6ab06f936207aa7f2ea1fd1d9a36763c7a507e6a",
+    "input_bytes": 10192446,
+    "decode_status": 0,
+    "stderr": ""
+  },
+  {
+    "file": "mozilla",
+    "output_sha256": "69ac06d9891aef49a7c2f399004beea54dade2da71411896f935638502cc2534",
+    "bytes": 16705000,
+    "input_sha256": "657fc3764b0c75ac9de9623125705831ebbfbe08fed248df73bc2dc66e2a963b",
+    "input_bytes": 51220480,
+    "decode_status": 0,
+    "stderr": ""
+  },
+  {
+    "file": "mr",
+    "output_sha256": "1764d774cc566041c75f7026008bf5338836b0d9598712c17b117254fab7583c",
+    "bytes": 2316515,
+    "input_sha256": "68637ed52e3e4860174ed2dc0840ac77d5f1a60abbcb13770d5754e3774d53e6",
+    "input_bytes": 9970564,
+    "decode_status": 0,
+    "stderr": ""
+  },
+  {
+    "file": "nci",
+    "output_sha256": "2ca4e1b63ce48a51e71addddc56120bb64762e58c103f99f358591fff040a930",
+    "bytes": 2373465,
+    "input_sha256": "fc63a31770947b8c2062d3b19ca94c00485a232bb91b502021948fee983e1635",
+    "input_bytes": 33553445,
+    "decode_status": 0,
+    "stderr": ""
+  },
+  {
+    "file": "ooffice",
+    "output_sha256": "c3f10789e046a18142cd231353c58203921ed15376dc1cae90dfc88667ce7ad7",
+    "bytes": 2609473,
+    "input_sha256": "e7ee013880d34dd5208283d0d3d91b07f442e067454276095ded14f322a656eb",
+    "input_bytes": 6152192,
+    "decode_status": 0,
+    "stderr": ""
+  },
+  {
+    "file": "osdb",
+    "output_sha256": "85d3641ac0d122b22ace5dc8d0dd2179bca9112e494fdee50cd8a15201cf87d0",
+    "bytes": 2435096,
+    "input_sha256": "60f027179302ca3ad87c58ac90b6be72ec23588aaa7a3b7fe8ecc0f11def3fa3",
+    "input_bytes": 10085684,
+    "decode_status": 0,
+    "stderr": ""
+  },
+  {
+    "file": "reymont",
+    "output_sha256": "881db74272a36ca9b0428a601884bb1bf29886612fbd05c3689442c6fbed0785",
+    "bytes": 1140335,
+    "input_sha256": "0eac0114a3dfe6e2ee1f345a0f79d653cb26c3bc9f0ed79238af4933422b7578",
+    "input_bytes": 6627202,
+    "decode_status": 0,
+    "stderr": ""
+  },
+  {
+    "file": "samba",
+    "output_sha256": "a9fe91680a6951bde0742df8e7ee6137542c53d2cf661ed427ef8d5f6d0823f4",
+    "bytes": 4306107,
+    "input_sha256": "93ba07bc44d8267789c1d911992f40b089ffa2140b4a160fac11ccae9a40e7b2",
+    "input_bytes": 21606400,
+    "decode_status": 0,
+    "stderr": ""
+  },
+  {
+    "file": "sao",
+    "output_sha256": "847441a7aae1659b26961f83deb01fe5e49f751b288fb67707fa8ea2ee1ec046",
+    "bytes": 4830033,
+    "input_sha256": "c2d0ea2cc59d4c21b7fe43a71499342a00cbe530a1d5548770e91ecd6214adcc",
+    "input_bytes": 7251944,
+    "decode_status": 0,
+    "stderr": ""
+  },
+  {
+    "file": "webster",
+    "output_sha256": "8c4b04701b528c63c9392f42d74ab1f93e3181e4e48da13d86b0f0bdfe3423f3",
+    "bytes": 7093663,
+    "input_sha256": "6a68f69b26daf09f9dd84f7470368553194a0b294fcfa80f1604efb11143a383",
+    "input_bytes": 41458703,
+    "decode_status": 0,
+    "stderr": ""
+  },
+  {
+    "file": "x-ray",
+    "output_sha256": "c4052148f19455608e03d5f0c8d43210a3f2f5986848d0ccb7f0ba7b7854d2fc",
+    "bytes": 3952842,
+    "input_sha256": "7de9fce1405dc44ae5e6813ed21cd5751e761bd4265655a005d39b9685d1c9ad",
+    "input_bytes": 8474240,
+    "decode_status": 0,
+    "stderr": ""
+  },
+  {
+    "file": "xml",
+    "output_sha256": "cb0f3af46c52cad0557e08fb34978b4d607781bd0ae9d3dfba8433e8518f90d8",
+    "bytes": 512940,
+    "input_sha256": "0e82e54e695c1938e4193448022543845b33020c8be6bf3bf3ead2224903e08c",
+    "input_bytes": 5345280,
+    "decode_status": 0,
+    "stderr": ""
+  }
+]

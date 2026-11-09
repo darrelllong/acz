@@ -218,7 +218,7 @@ fn truncated_input_errors() {
 
 #[test]
 fn many_pending_bits() {
-    // Repeatedly choosing the interval just around the midpoint maximises
+    // Repeatedly choosing the interval just around the midpoint maximizes
     // pending (carry) bits.
     let total = 1 << 16;
     let events: Vec<(u32, u32)> =
