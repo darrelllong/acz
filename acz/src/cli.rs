@@ -37,9 +37,7 @@ const EXIT_PIPE: u8 = 141;
 /// What to do with each input.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Mode {
-    /// Compress.
     Compress,
-    /// Decompress.
     Decompress,
     /// Decompress and verify, discarding the output.
     Test,
@@ -128,9 +126,9 @@ fn parse_threads(v: &str) -> Result<usize, String> {
     }
 }
 
-/// Parse a byte count: `N`, optionally followed by `K`, `M` or `G` (powers
-/// of 1024), each optionally followed by `B` or `iB`, in any case (`16M`,
-/// `16mb`, `16MiB`).
+/// Parses a byte count: `N`, optionally followed by `K`, `M` or `G` (powers of
+/// 1024), each optionally followed by `B` or `iB`, in any case (`16M`, `16mb`,
+/// `16MiB`).
 fn parse_size(v: &str) -> Option<u64> {
     let lower = v.to_ascii_lowercase();
     let s = lower.strip_suffix('b').unwrap_or(&lower);
@@ -149,7 +147,7 @@ fn parse_size(v: &str) -> Option<u64> {
     num.parse::<u64>().ok().and_then(|n| n.checked_mul(mult))
 }
 
-/// A power-of-two size the way a user writes it (`64K`, `16M`, `1G`).
+/// Returns a power-of-two size the way a user writes it (`64K`, `16M`, `1G`).
 fn show_size(n: u64) -> String {
     match n.trailing_zeros() {
         30.. => format!("{}G", n >> 30),
@@ -159,8 +157,8 @@ fn show_size(n: u64) -> String {
     }
 }
 
-/// log2 of a size, rounded up to a power of two (so the result is never
-/// smaller than asked for).
+/// Returns the log2 of a size, rounded up to a power of two, so the result is
+/// never smaller than asked for.
 fn parse_log2(v: &str) -> Option<u8> {
     parse_size(v).filter(|&n| n > 0).and_then(u64::checked_next_power_of_two).map(|n| n.trailing_zeros() as u8)
 }
@@ -177,8 +175,8 @@ fn parse_dedup(v: &str) -> Result<u8, String> {
         .ok_or_else(|| format!("invalid dedup window '{v}' (2 to 64G)"))
 }
 
-/// Set the option for a long flag that takes no value; false if `name` is
-/// not one.
+/// Sets the option for a long flag that takes no value, or returns false if
+/// `name` is not one.
 fn set_flag(o: &mut Opts, name: &str) -> bool {
     match name {
         "compress" => o.mode = Mode::Compress,
@@ -196,8 +194,8 @@ fn set_flag(o: &mut Opts, name: &str) -> bool {
     true
 }
 
-/// The value of a long option: after `=` (`--threads=4`), else the next
-/// argument (`--threads 4`).
+/// Returns the value of a long option: what follows `=` (`--threads=4`), or
+/// else the next argument (`--threads 4`).
 fn long_value(val: Option<String>, it: &mut impl Iterator<Item = OsString>, name: &str) -> Result<OsString, String> {
     match val {
         Some(v) => Ok(OsString::from(v)),
@@ -205,8 +203,8 @@ fn long_value(val: Option<String>, it: &mut impl Iterator<Item = OsString>, name
     }
 }
 
-/// The value of a short option such as `-T`: the rest of the argument
-/// (`-T4`), else the next argument (`-T 4`).
+/// Returns the value of a short option such as `-T`: the rest of the argument
+/// (`-T4`), or else the next argument (`-T 4`).
 fn short_value(rest: &str, it: &mut impl Iterator<Item = OsString>, flag: char) -> Result<OsString, String> {
     if rest.is_empty() {
         it.next().ok_or_else(|| format!("option '-{flag}' requires an argument"))
@@ -215,11 +213,11 @@ fn short_value(rest: &str, it: &mut impl Iterator<Item = OsString>, flag: char) 
     }
 }
 
-/// Parse flags in order, retaining file operands as OS strings so paths
-/// need not be UTF-8. `--` ends option parsing; a lone `-` remains stdin.
-/// Value-taking short options consume the remainder of their cluster or
-/// the next argument. Dependent options are checked after the scan, so
-/// their order on the command line does not affect block/window validation.
+/// Parses the flags in order. File operands are kept as OS strings, so a path
+/// need not be UTF-8. `--` ends the options, and a lone `-` is stdin. A short
+/// option that takes a value uses the rest of its cluster or the next argument.
+/// Options that depend on each other are checked after the scan, so their order
+/// on the command line does not matter.
 fn parse(args: Vec<OsString>, default_mode: Mode, default_stdout: bool) -> Result<Parsed, String> {
     let mut o = Opts {
         mode: default_mode,
@@ -354,10 +352,10 @@ fn parse(args: Vec<OsString>, default_mode: Mode, default_stdout: bool) -> Resul
     Ok(Parsed::Run(o))
 }
 
-/// The default memory budget: half of physical memory (or of a smaller
-/// cgroup limit), leaving the rest of the machine for everything else, or
+/// Returns the default memory budget: half of physical memory, or of a smaller
+/// cgroup limit, which leaves the rest of the machine for everything else; or
 /// [`format::DEFAULT_MEMORY`] where neither can be found. The budget only
-/// limits how many workers run, so it never changes the output.
+/// limits how many workers run, so it does not change the output.
 fn auto_memory() -> u64 {
     let phys = physical_memory();
     let limit = cgroup_limit();
@@ -368,9 +366,9 @@ fn auto_memory() -> u64 {
     }
 }
 
-/// Physical memory in bytes. Without `unsafe` there is no portable call, so
-/// this reads `/proc/meminfo` on Linux and asks `sysctl` (by absolute path)
-/// on macOS and the BSDs.
+/// Returns physical memory in bytes. Safe Rust has no portable call for it, so
+/// this reads `/proc/meminfo` on Linux and asks `sysctl`, by absolute path, on
+/// macOS and the BSDs.
 fn physical_memory() -> Option<u64> {
     if let Ok(s) = fs::read_to_string("/proc/meminfo") {
         let kb = s.lines().find_map(|l| l.strip_prefix("MemTotal:"))?;
@@ -392,26 +390,26 @@ fn physical_memory() -> Option<u64> {
     String::from_utf8(out.stdout).ok()?.trim().parse().ok()
 }
 
-/// The tightest cgroup v2 memory limit on this process, if any. In a
-/// container this can be far below physical memory.
+/// Returns the tightest cgroup v2 memory limit on this process, if any. In a
+/// container it can be far below physical memory.
 fn cgroup_limit() -> Option<u64> {
     let own = fs::read_to_string("/proc/self/cgroup").ok()?;
     let mounts = fs::read_to_string("/proc/self/mountinfo").ok()?;
     cgroup_limit_in(&own, &mounts)
 }
 
-/// The smallest `memory.max` of this process's cgroup and of each ancestor
-/// visible through the cgroup2 mounts. `self_cgroup` is the contents of
-/// `/proc/self/cgroup` and `mountinfo` of `/proc/self/mountinfo`.
+/// Returns the smallest `memory.max` of this process's cgroup and of each
+/// ancestor visible through the cgroup2 mounts. `self_cgroup` is the contents
+/// of `/proc/self/cgroup` and `mountinfo` those of `/proc/self/mountinfo`.
 ///
 /// The membership line `0::/path` names the cgroup from the root of the
-/// cgroup hierarchy, but the mount may expose only a subtree (its root,
-/// field 4 of mountinfo) at any mountpoint (field 5). So the path is taken
-/// relative to the mount's root and joined to its mountpoint, and the walk
-/// upward stops at the mountpoint. A limit set on any ancestor binds the
-/// process too. All matching mounts are read: a subtree bind mount can
-/// hide an ancestor that another mount exposes. "max" (no limit) and
-/// missing files are skipped.
+/// hierarchy, but a mount may expose only a subtree (its root, field 4 of
+/// mountinfo) at any mountpoint (field 5). So the path is taken relative to the
+/// mount's root and joined to its mountpoint, and the walk upward stops at the
+/// mountpoint. A limit on any ancestor binds the process too. Every matching
+/// mount is read, because a subtree bind mount can hide an ancestor that
+/// another mount exposes. `max`, which is no limit, and missing files are
+/// skipped.
 fn cgroup_limit_in(self_cgroup: &str, mountinfo: &str) -> Option<u64> {
     let path = self_cgroup.lines().find_map(|l| l.strip_prefix("0::"))?;
     let mounts = mountinfo.lines().filter_map(|line| {
@@ -452,7 +450,7 @@ fn cgroup_limit_in(self_cgroup: &str, mountinfo: &str) -> Option<u64> {
     limit
 }
 
-/// Undo mountinfo's escapes: space, tab, newline and backslash appear as
+/// Undoes mountinfo's escapes: space, tab, newline and backslash appear as
 /// `\040`, `\011`, `\012` and `\134`.
 fn unescape_mount(s: &str) -> String {
     let b = s.as_bytes();
@@ -503,12 +501,13 @@ fn run_stream(opts: &Opts, input: &mut dyn io::BufRead, output: &mut dyn Write) 
     }
 }
 
-/// The error for an output that exists and may not be replaced.
+/// Returns the error for an output that exists and may not be replaced.
 fn refuse_existing(out: &Path) -> String {
     format!("{}: already exists (use -f to overwrite)", out.display())
 }
 
-/// A failed publication, with a hint when the output appeared meanwhile.
+/// Returns the error for a failed publication, with a hint if the output
+/// appeared meanwhile.
 fn publish_error(out: &Path, e: &io::Error) -> String {
     let hint = if e.kind() == io::ErrorKind::AlreadyExists { " (use -f to overwrite)" } else { "" };
     format!("{}: {e}{hint}", out.display())
@@ -528,7 +527,7 @@ fn report(opts: &Opts, name: &str, st: Stats, dest: Option<&Path>) {
     eprintln!("{name}: {from} -> {to} bytes, {:.2}%, {:.3} bits/byte{arrow}", 100.0 * ratio, 8.0 * ratio);
 }
 
-/// Name of the per-file output for `input`.
+/// Returns the name of the output for `input`.
 fn derived_output(opts: &Opts, input: &Path) -> Result<PathBuf, String> {
     let s = input.as_os_str();
     let has_suffix = s.as_encoded_bytes().ends_with(SUFFIX.as_bytes());
@@ -554,13 +553,13 @@ fn derived_output(opts: &Opts, input: &Path) -> Result<PathBuf, String> {
 }
 
 /// A file written under a temporary name beside its destination. The
-/// destination is published only after coding and file synchronization
-/// succeed, so a codec failure cannot replace it with partial output.
-/// Keeping both names in one directory permits an atomic link or rename.
+/// destination is published only after coding and syncing succeed, so a failure
+/// cannot replace it with partial output. Both names are in one directory,
+/// which permits an atomic link or rename.
 ///
-/// `owns_tmp` records which name Drop may remove. A colliding temporary
-/// name is never opened or deleted; an abruptly killed process may leave
-/// its own temporary file behind.
+/// `owns_tmp` records whether Drop may remove the temporary name. A temporary
+/// name that already exists is never opened or deleted. A process killed
+/// abruptly may leave its temporary file behind.
 struct Staged {
     tmp: PathBuf,
     out: PathBuf,
@@ -570,10 +569,10 @@ struct Staged {
 }
 
 impl Staged {
-    /// Claim a new temporary name atomically. A preliminary existence
-    /// check would race another process; `create_new` makes collision
-    /// detection part of creation. Only successful creation gives this
-    /// object permission to remove the temporary name on failure.
+    /// Claims a new temporary name. `create_new` makes the check for a
+    /// collision part of creation, where a separate check would race another
+    /// process. Only a successful creation lets this object remove the name on
+    /// failure.
     fn create(out: &Path) -> io::Result<Self> {
         let base = out.file_name().unwrap_or(OsStr::new("out"));
         for attempt in 0..100u32 {
@@ -601,16 +600,16 @@ impl Staged {
         self.writer.as_mut().expect("staged file is open until published")
     }
 
-    /// Publish the completed file. First flush buffered bytes, copy
-    /// permissions and mtime when available, and sync the file itself.
-    /// Then use rename for explicit replacement or hard_link to create
-    /// a destination that must not exist. The latter is an atomic check:
-    /// an earlier path-existence check alone cannot prevent overwrites.
+    /// Publishes the completed file. Buffered bytes are flushed, permissions
+    /// and mtime are copied when available, and the file is synced. Then the
+    /// file is renamed over the destination if replacement was asked for, or
+    /// hard-linked to a destination that must not exist. The link is an atomic
+    /// check, which a test for the path beforehand is not.
     ///
-    /// Remove the temporary name after linking, then sync the directory.
-    /// A failure after publication can leave a complete output in place;
-    /// report that failure so the caller retains its source. There is no
-    /// fallback to a non-atomic copy when linking is unavailable.
+    /// After a link the temporary name is removed, and then the directory is
+    /// synced. A failure after publication can leave a complete output in
+    /// place; it is reported so that the caller keeps its source. There is no
+    /// fallback to a copy where linking is unavailable.
     fn publish(mut self, force: bool, meta: Option<&fs::Metadata>) -> io::Result<()> {
         let w = self.writer.take().expect("published once");
         let f = w.into_inner().map_err(|e| e.into_error())?;
@@ -642,8 +641,8 @@ impl Staged {
     }
 }
 
-/// Sync the directory holding `path` to persist a new or renamed entry.
-/// Unix only; elsewhere this does nothing.
+/// Syncs the directory holding `path`, to make a new or renamed entry durable.
+/// It does nothing except on Unix.
 fn sync_parent(path: &Path) -> io::Result<()> {
     #[cfg(unix)]
     {
@@ -671,15 +670,15 @@ impl Drop for Staged {
     }
 }
 
-/// Process one input. `shared` is the sink every output goes to (stdout,
-/// the `-o` file, or a discarding sink for `-t`); `None` means one output
-/// per input, named after it.
+/// Processes one input. `shared` is the sink every output goes to (stdout, the
+/// `-o` file, or a discarding sink for `-t`); `None` means one output for each
+/// input, named after it.
 ///
-/// Shared sinks are owned and finalized by `main`; this function must not
-/// publish them or remove their inputs. Per-file output is staged here,
-/// published after a successful stream operation, and only then may
-/// `--rm` remove that input. Errors before publication drop the temporary
-/// file, while errors after publication preserve the source.
+/// `main` owns and finishes a shared sink; this function neither publishes it
+/// nor removes its inputs. An output for one input is staged here and published
+/// after its stream succeeds, and only then may `--rm` remove the input. An
+/// error before publication drops the temporary file. An error after it keeps
+/// the source.
 fn process(opts: &Opts, name: &OsStr, shared: Option<&mut dyn Write>) -> Result<(), Fail> {
     let display = name.to_string_lossy().into_owned();
 
@@ -731,8 +730,8 @@ fn process(opts: &Opts, name: &OsStr, shared: Option<&mut dyn Write>) -> Result<
     Ok(())
 }
 
-/// Whether `a` and `b` name the same file: the same canonical path, or (on
-/// Unix) the same device and inode, which also catches hard links.
+/// Reports whether `a` and `b` name the same file: the same canonical path, or
+/// on Unix the same device and inode, which also catches hard links.
 fn same_file(a: &Path, b: &Path) -> bool {
     if let (Ok(x), Ok(y)) = (fs::canonicalize(a), fs::canonicalize(b)) {
         if x == y {
@@ -749,14 +748,14 @@ fn same_file(a: &Path, b: &Path) -> bool {
     false
 }
 
-/// Entry point. `default_mode` / `default_stdout` select the personality
-/// (`acz`, `unacz`, `aczcat`).
+/// The entry point. `default_mode` and `default_stdout` select the personality
+/// (`acz`, `unacz` or `aczcat`).
 ///
-/// Select one sink per operand: a discard sink for testing, a shared
-/// staged file for `-o`, stdout, or a separate staged output. Per-file
-/// errors are reported while processing continues; a closed stdout ends
-/// the run immediately. Shared `-o` output is published only if all inputs
-/// and the final flush succeeded, so one failure discards the whole result.
+/// Each operand gets a sink: a discarding one for testing, a shared staged file
+/// for `-o`, stdout, or its own staged output. An error on one file is reported
+/// and processing continues; a closed stdout ends the run at once. The shared
+/// `-o` output is published only if every input and the final flush succeeded,
+/// so one failure discards the whole result.
 pub fn main(default_mode: Mode, default_stdout: bool) -> ExitCode {
     let mut args = std::env::args_os();
     let prog = args

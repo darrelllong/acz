@@ -23,9 +23,21 @@ class HeldoutEvidenceTests(unittest.TestCase):
         self.addCleanup(shutil.rmtree, build)
         macros = heldout.write_tables(build)
         self.assertEqual((macros["CensusCM"], macros["CensusXz"], macros["CensusPpm"]),
-                         ("9.89", "10.49", "13.60"))
+                         ("9.81", "10.49", "13.60"))
+        self.assertEqual((macros["BackblazeCM"], macros["CensusCMOld"], macros["BackblazeCMOld"]),
+                         ("8.32", "9.89", "8.40"))
         self.assertEqual((macros["BackblazeZstd"], macros["BackblazePort"], macros["BackblazePpm"]),
                          ("9.13", "10.10", "10.61"))
+
+    def test_level_four_pass_must_match_the_inputs(self):
+        rows = heldout.read_tsv("backblaze-files.tsv")
+        new = heldout.read_tsv("backblaze-acz4-v14.tsv")
+        self.assertEqual(heldout.with_level_four(rows, new)[0]["acz4_0.6.0"], rows[0]["acz4"])
+        other_content = copy.deepcopy(new)
+        other_content[0]["content_sha256"] = "0" * 64
+        for case in (new[:-1], new + new[:1], other_content):
+            with self.assertRaises(ValueError):
+                heldout.with_level_four(rows, case)
 
     def test_reject_missing_duplicate_and_failed_inputs(self):
         rows = self.rows["backblaze"]

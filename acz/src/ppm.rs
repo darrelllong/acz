@@ -4,159 +4,99 @@
 //
 // Dedicated to the memory of my colleague Glen G. Langdon
 
-//! Prediction by partial matching (Cleary and Witten, 1984), with the
-//! contexts kept in a trie with suffix links (Moffat, 1990, §III) and the
-//! estimates of Shkarin's PPM with information inheritance (2002).
+//! Prediction by partial matching (Cleary and Witten, 1984) with contexts of up
+//! to [`MAX_ORDER`] bytes, kept in a trie with suffix links (Moffat, 1990) and
+//! estimated as in Shkarin's PPMII (2002).
 //!
-//! Each byte is coded in the longest context (up to [`MAX_ORDER`]
-//! preceding bytes) that has seen it. A context that has not seen the byte
-//! codes an *escape*, its symbols are excluded from the shorter contexts
-//! that follow, and coding moves to the next shorter context; below order 0
-//! every byte not excluded is equally likely. After coding, the byte is
-//! counted in that context and added to every longer one (update
-//! exclusion). The intervals and binary decisions are coded with the
-//! multi-symbol range coder of Moffat, Neal and Witten (1998),
-//! [`arith::MultiRangeEncoder`].
+//! A byte is coded in the longest context that has seen it. A context that has
+//! not seen it codes an escape, its symbols are excluded from the shorter
+//! contexts that follow, and coding moves to the next shorter context. Below
+//! order 0 every byte not excluded is equally likely. The byte is then counted
+//! in the context that coded it and added to every longer one (update
+//! exclusion). The events go to the range coder of Moffat, Neal and Witten
+//! (1998), [`arith::MultiRangeEncoder`].
 //!
-//! **Estimates.** The section numbers are Shkarin's.
-//! * A symbol seen `c` times has weight `2c − 1` (Howard's method D). Counts
-//!   are kept in half units, so that a half-weight count is exact.
-//! * A context holding one symbol codes a binary decision, the symbol or an
-//!   escape, with an escape probability learned for its class (§3.1; see
-//!   `Ppm::binary_class`).
-//! * A larger context gives the escape the weight of an escape *frequency*
-//!   t learned for its class, so that its probability is `t/(T + t)` for
-//!   the context's own total `T` of visible weights. Contexts with excluded
-//!   symbols use §3.3's 400 classes; those without use 200 of the kind
-//!   cPPMII uses (§5.5) in place of PPMII's per-context estimate (§3.2;
-//!   see `Ppm::escape_class`). Our implementation of §3.2, whose starting
-//!   value approximates the paper's numerical calculation by taking a
-//!   context's first symbol as its most probable, was worse on 31 of the
-//!   33 files of our development corpus (better on its total, through
-//!   enwik8) and worse on Silesia as a whole.
-//! * A symbol found below the longest order is also counted, at half
-//!   weight, in the next shorter context while its count in the longer one
-//!   is under 8 (§2.2).
-//! * A symbol added to a context that holds others starts with the count
-//!   equation (5) inherits from the context that coded it (§2.1). A context
-//!   created holding a byte gets its count from equation (5) only when it
-//!   is next encountered, from its parent's statistics as they stand then
-//!   (§2.1, last paragraph; see `Ppm::resolve_pending`).
+//! # Estimates
 //!
-//! **Choices the paper leaves open** (it refers them to its reference \[7\],
-//! which we have not used):
-//! * §2.1, a symbol added to a context `s_i` that holds others: τ = 1/4, with
-//!   PPMD's frequencies, `t(a|s) = f − 1/2` and `T(s) = Σ f`; the count is
-//!   `t₀ + 1/2`, between 1 and 32 (`inherited_count`).
-//! * §2.1, a new context: τ = 1 and t₀(esc) = 1, the values §3.1 gives for
-//!   binary contexts, with PPMD's estimates of the parent's frequencies, as
-//!   the paper allows in deriving (4); a parent of one symbol passes on its
-//!   own count (PPMC: `T − t = 1`). Between 1 and 32
-//!   (`new_context_count`).
-//! * §2.2: the cutoff is on the symbol's count `f` in the context that
-//!   coded it, before this byte is counted: the parent is updated while
-//!   `f < 8` (`updates_parent`).
-//! * §3.1, the class of a single-symbol context (`Ppm::binary_class`):
-//!   - its count in half units, exact below 64 and then eight levels per
-//!     octave, 128 levels in all;
-//!   - the number of symbols in the next shorter context: 1, 2–3, 4–15, or
-//!     more; for an order-1 context, the bytes in the order-0 table;
-//!   - whether the previous byte had a probability strictly above 1/2 in
-//!     the event that coded it, in a context or in the order-0 table (a
-//!     byte below order 0 counts as unlikely);
-//!   - whether the previous byte, and the context's symbol, have either of
-//!     their top two bits set;
-//!   - whether more than [`MAX_ORDER`] bytes in a row were each coded in the
-//!     first context tried with a probability strictly above 1/2.
+//! Section numbers are Shkarin's. Where the paper leaves a parameter to its
+//! reference \[7\], which we have not used, the choice is ours and is described
+//! at the function named.
 //!
-//!   Each class holds a 16-bit escape probability that moves 1/64 of the
-//!   way toward each outcome and stays within `[32, 65504]/65536`. On first
-//!   use it starts at PPMC's estimate `1/(f + 1)` for the count `f` of the
-//!   context that first uses it, half counts included.
-//! * The escape classes of larger contexts, their levels and thresholds,
-//!   and the subset of §5.5's components (`Ppm::escape_class`).
-//! * How a class learns its escape frequency t (`Ppm::escape`,
-//!   `Ppm::learn_escape`); the paper says the classes model t, but not how:
-//!   - W is the coder's denominator less the escape: the weights `h − 1`
-//!     (half units) of the symbols still visible, before this byte is
-//!     counted; with nothing excluded it is the node's total less its
-//!     symbols, not the node's total.
-//!   - t is unsigned with 12 fraction bits. On a class's first use it is
-//!     the number of visible symbols (method D's escape weight).
-//!   - The escape is coded with weight `max(1, ⌊t + ½⌋)` against W, from
-//!     t as it stood before the decision; t is learned after it, with the
-//!     same W and with `N₀` from the uses before this one (§3.3's law,
-//!     `N₀ = 2^(1+⌈log₂ max(4, N)⌉)` for N earlier uses, up to 64).
-//!   - An escape adds `W·2¹²/N₀` exactly (N₀ ≤ 64 divides 2¹²), up to
-//!     2¹⁸; a symbol subtracts `⌊t/N₀⌋` (in fraction units), down to 1/16.
-//!     This is the stochastic approximation of Robbins and Monro (1951)
-//!     for the mean of an observation that is `W + t` on an escape and 0
-//!     otherwise.
-//!   - Only the ideal update, unrounded and unclamped, settles exactly
-//!     where t = W·q/(1 − q) for an escape rate q. The integer update
-//!     rounds the decrement down, which moves the point of zero drift:
-//!     with W = 30 and N₀ = 64, t = 40961/2¹² gains 1920 on an escape and
-//!     loses 640 on a symbol, so it settles at q = 1/4, while
-//!     t/(W + t) = 40961/163841. The floor and cap bound it further, and
-//!     the coder rounds t to a whole weight.
+//! * A symbol seen `c` times has weight `2c − 1` (Howard and Vitter's method
+//!   D). Counts are kept in half units, which makes a half count exact.
 //!
-//! **Storage.** The contexts form a trie held in two arrays and linked by
-//! index (Knuth, *TAOCP* vol. 3, §6.3, on tries stored as tables). A node
-//! is a context; its symbols are its children, stored together in one
-//! array of slots. A context of one symbol, the commonest kind at the
-//! longer orders, keeps it in the node, and gets an array only when a
-//! second symbol arrives. Symbol `s` of context `c` points to the node of
-//! `c·s`, the context that follows when `s` is coded in `c`; at the
-//! longest order, where `c·s` would be too long, it points to `c·s`
-//! without its oldest byte. Every node also points to its *suffix*, the
-//! context without its oldest byte (Moffat's vine pointer). So once a byte
-//! is coded, the symbol it was found as names the next byte's longest
-//! context, and an escape follows the suffix pointer. These links replace
-//! global context-table searches. The initial contexts after a restart are
-//! temporarily matched by their bytes in the short list described below.
+//! * A context of one symbol codes a binary decision, the symbol or an escape,
+//!   with a probability learned for its class (§3.1; `Ppm::binary_class`).
 //!
-//! That this suffices rests on a property of update exclusion: it changes
-//! the counts, but not which symbols a context holds. A context that has
-//! never received `s` cannot be shorter than one that has, because the
-//! first time `s` followed it, every longer context escaped and so every
-//! one of them, and it, received `s`. Hence `c` holds `s` exactly when
-//! `c·s` has occurred, and every node but the first contexts after a
-//! restart is reached from the symbol of its own last byte. Those first
-//! contexts are created all at once from the current history, without the
-//! contexts that would lead to them; they are kept on a short list until
-//! the symbol that leads to each is added (see `Ppm::update`).
+//! * A larger context gives the escape a frequency learned for its class, coded
+//!   against the weights of its visible symbols (§3.3 and §5.5;
+//!   `Ppm::escape_class`, `Ppm::learn_escape`).
 //!
-//! When the context limit or the symbol arena is reached, every context and
-//! count is discarded; the preceding bytes and the learned classes are
-//! kept, and the byte being learned is then counted as if new.
+//! * A symbol found below the longest order is also counted, at half weight, in
+//!   the next shorter context while its count is under 8 (§2.2;
+//!   `updates_parent`).
 //!
-//! **Memory.** Both arrays are reserved once, at the most a block can need
-//! (bounded by its length and by the limits), and never grow past that, so
-//! nodes and arrays never move. A restart empties them but keeps their
-//! storage: what a block has touched stays with its model until the model
-//! is dropped.
+//! * A symbol added to a context starts with a count inherited from the context
+//!   that coded it (§2.1; `inherited_count`). A new context gets its count when
+//!   it is next used (`Ppm::resolve_pending`).
 //!
-//! **References.**
-//! J. G. Cleary and I. H. Witten, *Data Compression Using Adaptive Coding
-//! and Partial String Matching*, IEEE Trans. Commun. 32(4), 1984,
-//! pp. 396–402.
+//! # Storage
+//!
+//! The contexts form a trie held in two arrays and linked by index (Knuth, vol.
+//! 3, §6.3). A node is a context. Its symbols are its children, kept together
+//! in an array of slots; a context of one symbol, the commonest kind at the
+//! longer orders, keeps it in the node. Symbol `s` of context `c` points to the
+//! node of `c·s`, the context that follows when `s` is coded in `c`. At the
+//! longest order, where `c·s` would be too long, it points to `c·s` without its
+//! oldest byte. Every node also points to its suffix, the context without its
+//! oldest byte (Moffat's vine pointer). Once a byte is coded, the symbol it was
+//! found as names the next byte's longest context, and an escape follows the
+//! suffix pointer.
+//!
+//! This suffices because update exclusion changes the counts but not which
+//! symbols a context holds. The first time `s` followed a context, every longer
+//! context escaped, so all of them received `s` with it. Hence `c` holds `s`
+//! exactly when `c·s` has occurred, and every node is reached from the symbol
+//! of its last byte. The first contexts after a restart are the exception. They
+//! are created from the history without the contexts that lead to them, and
+//! wait on a short list until the symbol that leads to each is added (see
+//! `Ppm::update`).
+//!
+//! When the nodes or the slots run out, every context and count is discarded.
+//! The preceding bytes and the learned classes are kept, and the byte being
+//! learned is counted as if new.
+//!
+//! Both arrays are reserved once, at the most a block can need, and never grow,
+//! so nodes and arrays never move. A restart empties them but keeps their
+//! storage.
+//!
+//! # References
+//!
+//! J. G. Cleary and I. H. Witten, *Data Compression Using Adaptive Coding and
+//! Partial String Matching*, IEEE Trans. Commun. 32(4), 1984, pp. 396–402.
+//!
 //! A. Moffat, *Implementing the PPM Data Compression Scheme*, IEEE Trans.
-//! Commun. 38(11), 1990, pp. 1917–1921 (context tries; update exclusion).
+//! Commun. 38(11), 1990, pp. 1917–1921.
+//!
 //! D. E. Knuth, *The Art of Computer Programming*, vol. 3, *Sorting and
 //! Searching*, 2nd ed., Addison-Wesley, 1998, §6.3 (tries); vol. 1,
 //! *Fundamental Algorithms*, 3rd ed., 1997, §2.5 (free lists by size).
-//! P. G. Howard and J. S. Vitter, *Practical Implementations of
-//! Arithmetic Coding*, in J. A. Storer (ed.), *Image and Text
-//! Compression*, Kluwer, 1992, §3.5 (method D).
-//! C. Bloom, *Solving the Problems of Context Modeling*, 1998 (PPMZ;
-//! secondary escape estimation).
+//!
+//! P. G. Howard and J. S. Vitter, *Practical Implementations of Arithmetic
+//! Coding*, in J. A. Storer (ed.), *Image and Text Compression*, Kluwer, 1992,
+//! §3.5 (method D).
+//!
+//! C. Bloom, *Solving the Problems of Context Modeling*, 1998 (secondary escape
+//! estimation).
+//!
 //! D. Shkarin, *PPM: One Step to Practicality*, Proc. Data Compression
-//! Conference, 2002, pp. 202–211 (information inheritance; the modified
-//! update exclusion; secondary escape estimation by classes).
-//! H. Robbins and S. Monro, *A Stochastic Approximation Method*, Ann.
-//! Math. Statist. 22(3), 1951, pp. 400–407.
-//! A. Moffat, R. M. Neal and I. H. Witten, *Arithmetic Coding Revisited*,
-//! ACM Trans. Inf. Syst. 16(3), 1998, pp. 256–294.
+//! Conference, 2002, pp. 202–211.
+//!
+//! H. Robbins and S. Monro, *A Stochastic Approximation Method*, Ann. Math.
+//! Statist. 22(3), 1951, pp. 400–407.
+//!
+//! A. Moffat, R. M. Neal and I. H. Witten, *Arithmetic Coding Revisited*, ACM
+//! Trans. Inf. Syst. 16(3), 1998, pp. 256–294.
 
 use std::io::{self, Write};
 
@@ -168,8 +108,8 @@ pub const MAX_ORDER: usize = 6;
 const MAX_TOTAL: u32 = 1 << 12;
 /// Symbol slots before a restart.
 const SYM_SLOTS: usize = 1 << 24;
-/// The context limit is 3/4 of `3 · (2^CTX_LOG2 / 3)` contexts.
-const CTX_LOG2: u32 = 23;
+/// Contexts before a restart. The format fixes this value.
+const MAX_CONTEXTS: usize = 6_291_454;
 // A context grows its symbol array by doubling, up to 256 entries, so the
 // arena must hold one full array per order.
 const _: () = assert!(SYM_SLOTS >= 256 * MAX_ORDER);
@@ -204,8 +144,8 @@ struct Node {
 }
 const _: () = assert!(2 * MAX_TOTAL + 64 <= u16::MAX as u32);
 
-/// Halve a count kept in half units, as `⌈c/2⌉` halves a whole count `c`,
-/// so a count already in whole units stays in whole units.
+/// Halves a count in half units, rounding up to a whole count, so no count
+/// reaches zero.
 fn halve(h: u16) -> u16 {
     h.div_ceil(4) * 2
 }
@@ -239,12 +179,12 @@ struct Arena {
 const NO_ARRAY: u32 = u32::MAX;
 
 impl Arena {
-    /// An arena with room for `n` slots, reserved but not yet touched.
+    /// Returns an arena with room for `n` slots, reserved but not yet touched.
     fn new(n: usize) -> Self {
         Arena { slots: Vec::with_capacity(n), free: [NO_ARRAY; 9] }
     }
 
-    /// Slots taken from the end of the arena.
+    /// Returns the number of slots taken from the end of the arena.
     fn allocated(&self) -> usize {
         self.slots.len()
     }
@@ -254,7 +194,8 @@ impl Arena {
         self.free = [NO_ARRAY; 9];
     }
 
-    /// An array of `n` (a power of two, at most 256) slots; its first slot.
+    /// Returns the first slot of an array of `n` slots. `n` is a power of two,
+    /// at most 256.
     fn alloc(&mut self, n: usize) -> usize {
         let k = n.trailing_zeros() as usize;
         let head = self.free[k];
@@ -267,7 +208,7 @@ impl Arena {
         start
     }
 
-    /// Return the array of `n` slots at `start`.
+    /// Returns the array of `n` slots at `start` to its free list.
     fn release(&mut self, start: usize, n: usize) {
         let k = n.trailing_zeros() as usize;
         self.slots[start].next = self.free[k];
@@ -275,14 +216,14 @@ impl Arena {
     }
 }
 
-/// Slots in the symbol array of a context with `len` (at least two)
-/// symbols: the next power of two, up to all 256 byte values.
+/// Returns the slots in the symbol array of a context with `len` symbols, at
+/// least two: the next power of two, up to all 256 byte values.
 fn capacity(len: usize) -> usize {
     len.next_power_of_two().min(256)
 }
 
-/// The packed bytes of a context, for matching the contexts created right
-/// after a restart: the low `order` bytes of `bytes` and the order.
+/// Returns the packed bytes of a context, for matching the contexts created
+/// right after a restart: the low `order` bytes of `bytes`, and the order.
 fn key(bytes: u64, order: usize) -> u64 {
     let mask = (1u64 << (8 * order)) - 1;
     ((bytes & mask) << 3) | order as u64
@@ -300,30 +241,27 @@ enum Found {
     Nowhere,
 }
 
-/// Whether a symbol found in the context of `order`, where its count is
-/// `count` in half units before this byte is counted, is also counted at half
-/// weight in the parent (Shkarin, §2.2). The paper stops the parent's update
-/// once the symbol's generalized frequency `t(a|s_k)` in the found context
-/// reaches 8; we take `t` to be the stored count `f = count / 2` before the
-/// increment, so the parent is updated while `f < 8`. It is not updated when
-/// the symbol was found at the longest order, where the paper takes the
-/// statistics to be stable (§2.2, end).
+/// Reports whether a symbol found in a context of `order`, where its count was
+/// `count` half units before this byte, is also counted at half weight in the
+/// next shorter context (§2.2). The paper updates the parent while the symbol's
+/// frequency in the found context is under 8, and never from the longest order,
+/// whose statistics it takes to be stable. We read that frequency as the stored
+/// count.
 fn updates_parent(order: usize, count: u16) -> bool {
     order < MAX_ORDER && count < 16
 }
 
-/// The first count, in half units, of a byte added to a context `s_i` that
-/// already holds `m_i` symbols with total `t_i`, by Shkarin's equation (5)
-/// with τ = 1/4 (§2.1): the byte had count `h_a` in the context `s_k` that
-/// coded it, whose total is `t_k`. All counts are in half units.
+/// Returns the first count, in half units, of a byte added to a context that
+/// holds `m_i` symbols with total `t_i`. The byte had count `h_a` in the
+/// context that coded it, whose total is `t_k`.
 ///
-/// In the paper's terms, with PPMD's frequencies, the byte's generalized
-/// frequency in `s_k` is `t(a|s_k) = f − 1/2` and a context's `T(s)`, which
-/// includes its escape frequency `m(s)/2`, is the sum of its counts `Σ f`:
-/// `t₀ = τ + T(s_i)·(t(a|s_k) − τ) / (T(s_k) − t(a|s_k) + T(s_i) − m(s_i))`.
-/// Multiplying through by 4 keeps τ exact in integers. The new count is then
-/// `f₀ = t₀ + 1/2`, kept between 1 and 32 like a new context's inheritance.
-/// The denominator is at least 1/2, since every count is at least 1.
+/// This is equation (5) of §2.1 with τ = 1/4 and PPMD's frequencies: the byte's
+/// frequency where it was coded is `t(a|s_k) = f − 1/2`, and `T(s)`, which
+/// includes the escape frequency `m(s)/2`, is `Σ f`. Then
+/// `t₀ = τ + T(s_i)·(t(a|s_k) − τ) / (T(s_k) − t(a|s_k) + T(s_i) − m(s_i))` and
+/// the count is `t₀ + 1/2`, kept between 1 and 32. The arithmetic is in quarter
+/// units, where τ is an integer. The denominator is at least 1/2 because every
+/// count is at least 1.
 fn inherited_count(h_a: u16, t_k: u16, t_i: u16, m_i: usize) -> u16 {
     let (h_a, t_k, t_i, m_i) = (u64::from(h_a), u64::from(t_k), u64::from(t_i), m_i as u64);
     let num = 2 * t_i * (2 * h_a - 3);
@@ -333,16 +271,15 @@ fn inherited_count(h_a: u16, t_k: u16, t_i: u16, m_i: usize) -> u16 {
     (t0_4 / 2 + 1).clamp(2, 64) as u16
 }
 
-/// The first count, in half units, of a new context, by Shkarin's equation
-/// (5) for a context with `T(s_i) = 0` (§2.1), with the values §3.1 gives
-/// for binary contexts: τ = 1 and t₀(esc|s_i) = 1 (PPMC), so
-/// `t₀ = 1 + (t(a|s_k) − 1) / (T(s_k) − t(a|s_k))`. The new context's count
-/// is t₀ itself, as the single-symbol classes read a count as PPMC does.
-/// The byte has weight `w` of total `t` in the parent (weights `h − 1` and
-/// counts in half units, so t(a|s_k) = w/2 and T(s_k) = t/2).
+/// Returns the first count, in half units, of a new context whose byte has
+/// weight `w` of total `t` in the parent. Weights are `h − 1` and counts are in
+/// half units, so `t(a|s_k) = w/2` and `T(s_k) = t/2`.
 ///
-/// Rounded down and kept between 1 and 32, like the other inheritances; a
-/// byte with t(a|s_k) below τ gets the least count.
+/// This is equation (5) of §2.1 for a context with `T(s_i) = 0`, with the
+/// values §3.1 gives for binary contexts, τ = 1 and `t₀(esc|s_i) = 1`:
+/// `t₀ = 1 + (t(a|s_k) − 1) / (T(s_k) − t(a|s_k))`. The count is `t₀` itself,
+/// since the single-symbol classes read a count as PPMC does. It is rounded
+/// down and kept between 1 and 32.
 fn new_context_count(w: u32, t: u32) -> u16 {
     let (w, t) = (i64::from(w), i64::from(t));
     (2 + 2 * (w - 2) / (t - w)).clamp(2, 64) as u16
@@ -368,8 +305,8 @@ const T_FRAC: u32 = 12;
 const T_MAX: u32 = 1 << 18;
 const _: () = assert!(2 * MAX_TOTAL + 64 + T_MAX <= arith::MULTI_MAX_TOTAL);
 
-/// A count in half units in 128 levels: exact below 64, then four octaves
-/// of eight steps each (the leading bit and the three below it).
+/// Returns one of 128 levels for a count in half units: exact below 64, then
+/// four octaves of eight steps each (the leading bit and the three below it).
 fn count_level(h: u16) -> usize {
     if h < 64 {
         return usize::from(h);
@@ -389,11 +326,11 @@ pub struct Ppm {
     /// How often each escape class has been used (saturating), for its
     /// adaptation rate.
     esc_uses: Vec<u16>,
-    /// Whether the last byte had a probability above 1/2 in the context
-    /// that coded it.
+    /// Whether the last byte had a probability strictly above 1/2 in the event
+    /// that coded it. A byte coded below order 0 counts as unlikely.
     prev_likely: bool,
-    /// How many bytes in a row had a probability above 1/2 in the first
-    /// context tried.
+    /// The number of bytes in a row each coded in the first context tried with
+    /// a probability strictly above 1/2.
     run: u32,
     /// Whether the last byte escaped from the first context tried.
     escaped_last: bool,
@@ -439,48 +376,41 @@ pub struct Ppm {
 }
 
 impl Ppm {
-    /// The most memory a model for a block of `block_size` bytes can come
-    /// to hold, which is what admission charges for it: its two arrays as
-    /// reserved, and the learned tables.
+    /// Returns the most memory a model for a block of `block_size` bytes can
+    /// come to hold: its two arrays as reserved, and the learned tables.
+    /// Admission charges this.
     pub fn memory(block_size: usize) -> u64 {
-        let (slots, nodes) = Self::capacities(SYM_SLOTS, CTX_LOG2, block_size);
+        let (slots, nodes) = Self::capacities(SYM_SLOTS, MAX_CONTEXTS, block_size);
         let arrays = slots * std::mem::size_of::<Slot>() + nodes * std::mem::size_of::<Node>();
         let tables = BIN_CLASSES * std::mem::size_of::<u16>()
             + ESCAPE_CLASSES * (std::mem::size_of::<u32>() + std::mem::size_of::<u16>());
         (arrays + tables + std::mem::size_of::<Self>()) as u64
     }
 
-    /// The slots and nodes to reserve for a block of `len` bytes. Each byte
-    /// adds at most [`MAX_ORDER`] contexts and adds itself to at most that
-    /// many. A context that comes to hold `n` symbols has taken arrays of
-    /// 2, 4, … up to fewer than `2n` slots, under `4n` in all, so the arena
-    /// never passes `4 · MAX_ORDER · len` slots; restarts only lower these.
-    /// Node 0 and one byte's new contexts come on top of the context limit.
-    fn capacities(sym_slots: usize, ctx_log2: u32, len: usize) -> (usize, usize) {
+    /// Returns the slots and nodes to reserve for a block of `len` bytes. A
+    /// byte adds at most [`MAX_ORDER`] contexts and adds itself to at most that
+    /// many. A context that comes to hold `n` symbols has used arrays of 2, 4,
+    /// … up to fewer than `2n` slots, under `4n` in all, so the arena never
+    /// passes `4 · MAX_ORDER · len` slots. Node 0 and one byte's new contexts
+    /// come on top of the context limit.
+    fn capacities(sym_slots: usize, max_contexts: usize, len: usize) -> (usize, usize) {
         // Saturating: blocks of up to 1 GiB would overflow a 32-bit usize.
         let slots = sym_slots.min(len.saturating_mul(4 * MAX_ORDER));
-        let nodes = 1 + Self::context_limit(ctx_log2).min(len.saturating_mul(MAX_ORDER)) + MAX_ORDER;
+        let nodes = 1 + max_contexts.min(len.saturating_mul(MAX_ORDER)) + MAX_ORDER;
         (slots, nodes)
     }
 
-    /// The most contexts: 3/4 of `3 · ⌊2^ctx_log2 / 3⌋`, the limit at which
-    /// the model of format 9 restarted.
-    fn context_limit(ctx_log2: u32) -> usize {
-        3 * 3 * ((1usize << ctx_log2) / 3) / 4
-    }
-
-    /// A model for a block of `len` bytes.
+    /// Returns a model for a block of `len` bytes.
     pub fn new(len: usize) -> Self {
-        Self::with_limits(SYM_SLOTS, CTX_LOG2, len)
+        Self::with_limits(SYM_SLOTS, MAX_CONTEXTS, len)
     }
 
-    /// A model with `sym_slots` symbol slots and room for about
-    /// `2^ctx_log2 · 3/4` contexts, for a block of `len` bytes (small limits
-    /// force frequent restarts, for testing).
-    fn with_limits(sym_slots: usize, ctx_log2: u32, len: usize) -> Self {
+    /// Returns a model with the given limits for a block of `len` bytes. Small
+    /// limits force frequent restarts, for testing.
+    fn with_limits(sym_slots: usize, max_contexts: usize, len: usize) -> Self {
         // A restart must leave room for more than one byte's updates.
-        assert!(sym_slots > 2 * 256 * MAX_ORDER && ctx_log2 >= 4);
-        let (slot_capacity, node_capacity) = Self::capacities(sym_slots, ctx_log2, len);
+        assert!(sym_slots > 2 * 256 * MAX_ORDER && max_contexts > 2 * MAX_ORDER);
+        let (slot_capacity, node_capacity) = Self::capacities(sym_slots, max_contexts, len);
         let mut m = Ppm {
             bin_escape: vec![0; BIN_CLASSES],
             esc_freq: vec![0; ESCAPE_CLASSES],
@@ -490,7 +420,7 @@ impl Ppm {
             escaped_last: false,
             order0_len: 0,
             nodes: Vec::with_capacity(node_capacity),
-            max_contexts: Self::context_limit(ctx_log2),
+            max_contexts,
             slots: Arena::new(slot_capacity),
             sym_slots,
             restarts: 0,
@@ -514,8 +444,7 @@ impl Ppm {
         m
     }
 
-    /// Forget every context and count (see the module documentation for
-    /// what is kept). The arrays keep their storage.
+    /// Forgets every context and count. The arrays keep their storage.
     fn restart(&mut self) {
         self.restarts += 1;
         self.nodes.truncate(1);
@@ -530,13 +459,14 @@ impl Ppm {
         self.n_orphans = 0;
     }
 
-    /// A new context holding `byte`, its count pending, leading nowhere yet.
+    /// Creates a context holding `byte`, its count pending, leading nowhere
+    /// yet.
     fn new_node(&mut self, suffix: u32, byte: u8) -> u32 {
         self.nodes.push(Node { suffix, link: 0, total: 0, more: 0, byte });
         (self.nodes.len() - 1) as u32
     }
 
-    /// The symbols of a context of two or more.
+    /// Returns the symbols of a context of two or more.
     fn symbols(&self, c: &Node) -> &[Slot] {
         &self.slots.slots[c.link as usize..c.link as usize + c.len()]
     }
@@ -545,6 +475,14 @@ impl Ppm {
         match at {
             At::Node(i) => self.nodes[i as usize].link,
             At::Slot(s) => self.slots.slots[s as usize].next,
+        }
+    }
+
+    /// Returns the count, in half units, of the symbol at `at`.
+    fn count_at(&self, at: At) -> u16 {
+        match at {
+            At::Node(i) => self.nodes[i as usize].total,
+            At::Slot(s) => self.slots.slots[s as usize].count,
         }
     }
 
@@ -566,11 +504,17 @@ impl Ppm {
         self.excluded[usize::from(b)] == self.stamp
     }
 
-    /// Start coding a byte with nothing excluded, and with the counts of
-    /// the branch's new contexts resolved. A byte is excluded when
-    /// `excluded[b]` equals the current stamp, so moving to a new stamp
-    /// clears every exclusion at once; the array is reset only when the
-    /// stamp wraps around.
+    /// Returns all ones if `b` is not excluded and zero if it is. Masking a
+    /// symbol's weight with it spares the scans a branch on the exclusion,
+    /// which the processor cannot predict.
+    fn seen_mask(&self, b: u8) -> u32 {
+        u32::from(self.excluded[usize::from(b)] == self.stamp).wrapping_sub(1)
+    }
+
+    /// Prepares to code a byte: nothing is excluded and no context on the
+    /// branch is pending. Byte `b` is excluded while `excluded[b]` equals the
+    /// stamp, so a new stamp clears every exclusion at once. The array is reset
+    /// only when the stamp wraps.
     fn begin_byte(&mut self) {
         self.any_excluded = false;
         self.stamp = self.stamp.wrapping_add(1);
@@ -581,25 +525,20 @@ impl Ppm {
         self.resolve_pending();
     }
 
-    /// Give each pending context on the current branch its first count
-    /// (Shkarin §2.1, last paragraph): "it is more preferable to delay
-    /// calculation of (5) until s_i is encountered next time", since the
-    /// parent's distribution by then "is usually more similar".
+    /// Gives each pending context on the current branch its first count.
     ///
-    /// A new context holds its byte with count 0, which no other context
-    /// has (every count is at least 1). Until the branch reaches it, nothing
-    /// reads that count: coding, the parent update and both inheritances
-    /// touch only contexts on the branch being coded, and a pending context
-    /// gains no symbols, since symbols are added only to contexts the branch
-    /// has visited. So resolving the branch's pending contexts before each
-    /// byte, shortest first, resolves every count before it is read.
+    /// A new context holds its byte with count 0, which marks it pending.
+    /// Shkarin (§2.1, last paragraph) delays equation (5) until the context is
+    /// next met, when the parent's statistics are closer to what the context
+    /// will see. Nothing reads a pending count before then: coding, the parent
+    /// update and both inheritances touch only contexts on the branch being
+    /// coded, and a pending context gains no symbols. Resolving the branch's
+    /// pending contexts before each byte, shortest first, is therefore enough.
     ///
-    /// Each takes equation (5) for a new context from its parent `s` (which
-    /// holds the byte `a`: every context shorter than one holding a byte
-    /// holds it too), with τ = 1 and t₀(esc) = 1 as in `new_context_count`,
-    /// and with PPMD's estimates of the parent's frequencies, as the paper
-    /// allows in deriving (4): t(a|s) = f − 1/2 and T(s) = Σ f. A parent of
-    /// one symbol, a binary context, gives its own count (PPMC: T − t = 1).
+    /// Each count comes from the parent, which holds the byte because every
+    /// suffix of a context holds that context's symbols. `new_context_count`
+    /// gives the estimate. A parent of one symbol passes on its own count
+    /// (PPMC: `T − t = 1`).
     fn resolve_pending(&mut self) {
         let mut chain = [0u32; MAX_ORDER];
         let mut n = 0;
@@ -640,7 +579,7 @@ impl Ppm {
         self.any_excluded = true;
     }
 
-    /// Exclude the symbols of a context of two or more.
+    /// Excludes the symbols of a context of two or more.
     fn exclude_context(&mut self, c: &Node) {
         let stamp = self.stamp;
         for s in &self.slots.slots[c.link as usize..c.link as usize + c.len()] {
@@ -657,14 +596,14 @@ impl Ppm {
         }
     }
 
-    /// A symbol's share of its context's interval (method D: 2c − 1, with
-    /// the count `c` kept in half units).
+    /// Returns the weight of a symbol with `count` half units: `2c − 1` for a
+    /// symbol seen `c` times (method D).
     fn weight(count: u16) -> u32 {
         u32::from(count) - 1
     }
 
-    /// Sum of the weights of the symbols of `c` (two or more) that are not
-    /// excluded, and how many there are.
+    /// Returns the sum of the weights of the symbols of `c` that are not
+    /// excluded, and their number. `c` has two or more symbols.
     fn visible(&self, c: &Node) -> (u32, u32) {
         if !self.any_excluded {
             // Nothing excluded: Σ (2c − 1) over the symbols is 2N − d.
@@ -673,10 +612,9 @@ impl Ppm {
         }
         let (mut sum, mut n) = (0, 0);
         for s in self.symbols(c) {
-            if !self.is_excluded(s.byte) {
-                sum += Self::weight(s.count);
-                n += 1;
-            }
+            let seen = self.seen_mask(s.byte);
+            sum += Self::weight(s.count) & seen;
+            n += seen & 1;
         }
         (sum, n)
     }
@@ -693,8 +631,8 @@ impl Ppm {
         (sum, n)
     }
 
-    /// The escape probability of a single-symbol context, in 16 bits, and
-    /// its class.
+    /// Returns the escape probability of a single-symbol context, in 16 bits,
+    /// and its class.
     fn binary_estimate(&mut self, c: &Node) -> (u16, usize) {
         debug_assert!(c.total != 0, "a pending context's count was read");
         let k = self.binary_class(c);
@@ -707,13 +645,21 @@ impl Ppm {
         (self.bin_escape[k], k)
     }
 
-    /// Shkarin's class of a single-symbol context (§3.1): the symbol's count
-    /// in 128 levels, the number of symbols in the next shorter context in
-    /// four classes, whether the previous byte had a probability above 1/2,
-    /// whether the previous byte and the symbol have either of their top two
-    /// bits set, and whether a run of more than [`MAX_ORDER`] such bytes is
-    /// under way. The levels and classes are ours; the paper leaves them to
-    /// its reference \[7\].
+    /// Returns the class of a single-symbol context (§3.1). The paper leaves
+    /// the classes to its reference \[7\]. Ours combine:
+    ///
+    /// * the symbol's count in 128 levels (`count_level`);
+    ///
+    /// * the number of symbols in the next shorter context, as 1, 2–3, 4–15 or
+    ///   more; for an order-1 context, the bytes in the order-0 table;
+    ///
+    /// * whether the previous byte was likely (`prev_likely`);
+    ///
+    /// * whether the previous byte has either of its top two bits set, and
+    ///   whether the context's symbol does;
+    ///
+    /// * whether a run of more than [`MAX_ORDER`] likely bytes is under way
+    ///   (`run`).
     fn binary_class(&self, c: &Node) -> usize {
         let shorter = if c.suffix == 0 { self.order0_len } else { self.nodes[c.suffix as usize].len() as u16 };
         let shorter = match shorter {
@@ -730,8 +676,8 @@ impl Ppm {
         (count_level(c.total) * 4 + shorter) * 16 + flags
     }
 
-    /// Move class `k`'s escape probability `1/2^BIN_SHIFT` of the way toward
-    /// the outcome.
+    /// Moves the escape probability of class `k` `1/2^BIN_SHIFT` of the way
+    /// toward the outcome, within [`BIN_MIN`] of either end.
     fn learn_binary(&mut self, k: usize, escape: bool) {
         let p = i64::from(self.bin_escape[k]);
         let target = if escape { i64::from(BIN_ONE) } else { 0 };
@@ -739,17 +685,16 @@ impl Ppm {
         self.bin_escape[k] = p.clamp(i64::from(BIN_MIN), i64::from(BIN_ONE - BIN_MIN)) as u16;
     }
 
-    /// The weight of the escape in context `c`, whose `visible` symbols are
-    /// not excluded, reached after escaping from a context of `child`
-    /// symbols, and its class.
+    /// Returns the weight of the escape in context `c`, which has `visible`
+    /// symbols not excluded and was reached by escaping from a context of
+    /// `child` symbols, and the escape's class.
     ///
-    /// How likely an escape is cannot be read off one context's counts
-    /// well: a context seen a few times has too little evidence. Secondary
-    /// escape estimation (Bloom's PPMZ; Shkarin's PPMII) pools that evidence
-    /// over contexts that are alike. Each class learns an escape frequency
-    /// t (§3.3, §5.5), which is the escape's weight against the visible
-    /// symbols' weights; on a class's first use, method D's, the number of
-    /// visible symbols.
+    /// One context's counts say little about how likely an escape is. Secondary
+    /// escape estimation (Bloom's PPMZ, Shkarin's PPMII) pools the evidence of
+    /// similar contexts. Each class learns an escape frequency `t`, kept with
+    /// [`T_FRAC`] fraction bits, and the escape is coded with weight
+    /// `max(1, ⌊t + ½⌋)` against the weights of the visible symbols. A class
+    /// starts at the number of visible symbols, which is method D's escape.
     fn escape(&mut self, visible: u32, c: &Node, child: usize) -> (u32, usize) {
         let class = self.escape_class(visible, c, child);
         let t = &mut self.esc_freq[class];
@@ -759,16 +704,21 @@ impl Ppm {
         (((*t + (1 << (T_FRAC - 1))) >> T_FRAC).max(1), class)
     }
 
-    /// Shkarin's escape class of context `c` with `visible` symbols not
-    /// excluded, reached after escaping from a context of `child` symbols (0
-    /// for the first context tried). With exclusions (§3.3): the visible
-    /// symbols in 25 levels; whether they outnumber the child's symbols;
-    /// whether the next shorter context adds more symbols than this one adds
-    /// to the child; the previous byte's top bits; and whether the average
-    /// count `T(s)/(m(s) + 1)` exceeds 2. Without (§5.5's classes, in place
-    /// of §3.2's estimator): the symbols in 25 levels; whether
-    /// `4·m(s) > 3·m(s_{i−1})`; the previous byte's top bits; and the
-    /// long-run flag. The levels and thresholds are ours.
+    /// Returns the escape class of context `c`, which has `visible` symbols not
+    /// excluded and was reached by escaping from a context of `child` symbols
+    /// (0 for the first context tried). The levels and thresholds are ours.
+    ///
+    /// With exclusions there are 400 classes (§3.3): the visible symbols in 25
+    /// levels; whether `c` adds more symbols than the child holds; whether the
+    /// next shorter context adds more symbols than `c` adds to the child;
+    /// whether the previous byte has either of its top two bits set; and
+    /// whether the average count `T(s)/(m(s) + 1)` exceeds 2.
+    ///
+    /// Without exclusions there are 200, of the kind §5.5 describes, in place
+    /// of §3.2's estimate for each context: the symbols in 25 levels; whether
+    /// `c` has more than 3/4 as many symbols as the next shorter context; the
+    /// previous byte's top bits; and whether a run of likely bytes is under
+    /// way.
     fn escape_class(&self, visible: u32, c: &Node, child: usize) -> usize {
         let m = c.len();
         let shorter = if c.suffix == 0 { usize::from(self.order0_len) } else { self.nodes[c.suffix as usize].len() };
@@ -787,12 +737,21 @@ impl Ppm {
         }
     }
 
-    /// Learn from a decision between an escape and the visible symbols,
-    /// whose weights sum to `sum`, in a context of escape class `class`:
-    /// `t += (δ·(sum + t) − t)/N₀` for δ = 1 on an escape, so `+sum/N₀` on an
-    /// escape and `−t/N₀` otherwise, with `N₀ = 2^(1+⌈log₂ max(4, N)⌉)` for
-    /// N earlier uses, until it reaches 64 (§3.3). See the module
-    /// documentation for the rounding.
+    /// Updates escape class `class` after a decision between an escape and
+    /// visible symbols whose weights sum to `sum`. The weights are taken before
+    /// this byte is counted.
+    ///
+    /// The paper says the classes model the escape frequency `t` but not how
+    /// they learn it. Ours is the stochastic approximation of Robbins and Monro
+    /// (1951) for the mean of an observation that is `sum + t` on an escape and
+    /// 0 otherwise: `t += (δ·(sum + t) − t)/N₀`, which adds `sum/N₀` on an
+    /// escape and subtracts `t/N₀` on a symbol. `N₀` follows §3.3:
+    /// `2^(1+⌈log₂ max(4, N)⌉)` for `N` earlier uses of the class, up to 64.
+    /// `t` stays between 1/16 and [`T_MAX`].
+    ///
+    /// The ideal update settles where `t/(sum + t)` equals the escape rate.
+    /// This one only approximates that: the decrement is rounded down, `t` is
+    /// bounded, and the coder rounds `t` to a whole weight.
     fn learn_escape(&mut self, class: usize, sum: u32, escaped: bool) {
         let n = &mut self.esc_uses[class];
         let uses = u32::from((*n).max(4));
@@ -806,24 +765,21 @@ impl Ppm {
         };
     }
 
-    /// How many times the model has restarted, for diagnostics.
+    /// Returns how many times the model has restarted, for diagnostics.
     pub fn restarts(&self) -> u32 {
         self.restarts
     }
 
-    /// Code `byte`.
+    /// Codes `byte`.
     ///
-    /// Try the contexts from longest to shortest, following suffix links.
-    /// In each, the interval is divided among the symbols not yet excluded
-    /// (in their stored order) and, after them, the escape. If the byte is
-    /// there, code its interval and stop; otherwise code the escape,
-    /// exclude this context's symbols (the byte is none of them, so the
-    /// shorter contexts need not leave room for them), and go on. A context
-    /// with a single symbol and nothing excluded codes a binary decision
-    /// instead, with a learned probability. After the contexts come the
-    /// order-0 table and, if the byte is new, a uniform choice among the
-    /// bytes not excluded. [`Ppm::decode`] makes exactly the same choices,
-    /// so the two stay in step.
+    /// The contexts are tried from longest to shortest along the suffix links.
+    /// Each divides its interval among its symbols not yet excluded, in stored
+    /// order, followed by the escape. If the byte is there, its interval is
+    /// coded. Otherwise the escape is coded and the context's symbols are
+    /// excluded, since the byte is none of them. A context of one symbol with
+    /// nothing excluded codes a binary decision. After the contexts come the
+    /// order-0 table and then a uniform choice among the bytes not excluded.
+    /// [`Ppm::decode`] makes the same choices.
     pub fn encode<W: Write>(&mut self, enc: &mut MultiRangeEncoder<W>, byte: u8) -> io::Result<()> {
         self.begin_byte();
         let (mut i, mut order) = (self.top, self.top_order);
@@ -881,19 +837,19 @@ impl Ppm {
                     let d = c.len() as u32;
                     (u32::from(c.total) - d, d)
                 } else {
+                    // The byte escaped from the longer contexts, so it is not
+                    // excluded and its weight is not masked.
                     let (mut sum, mut visible) = (0, 0);
                     for (k, s) in self.symbols(&c).iter().enumerate() {
-                        if self.is_excluded(s.byte) {
-                            continue;
-                        }
-                        let w = Self::weight(s.count);
+                        let seen = self.seen_mask(s.byte);
+                        let w = Self::weight(s.count) & seen;
                         if s.byte == byte {
                             low = sum;
                             hit = w;
                             at = k;
                         }
                         sum += w;
-                        visible += 1;
+                        visible += seen & 1;
                     }
                     (sum, visible)
                 };
@@ -955,11 +911,8 @@ impl Ppm {
         Ok(())
     }
 
-    /// Decode one byte: the mirror of [`Ppm::encode`]. In each context the
-    /// decoder asks where the code value falls in the same division of the
-    /// interval: in a symbol's part, that is the byte; in the escape's
-    /// part, it excludes the context's symbols and goes on, exactly as the
-    /// encoder did.
+    /// Decodes one byte. It mirrors [`Ppm::encode`], asking the coder in each
+    /// context where the code value falls in the same division of the interval.
     pub fn decode(&mut self, dec: &mut MultiRangeDecoder<'_>) -> io::Result<u8> {
         self.begin_byte();
         let (mut i, mut order) = (self.top, self.top_order);
@@ -1006,10 +959,8 @@ impl Ppm {
                         // Find the symbol whose interval holds the target.
                         let (mut low, mut hit) = (0, None);
                         for (k, s) in self.symbols(&c).iter().enumerate() {
-                            if self.any_excluded && self.is_excluded(s.byte) {
-                                continue;
-                            }
-                            let w = Self::weight(s.count);
+                            // An excluded symbol has no interval: weight 0.
+                            let w = Self::weight(s.count) & self.seen_mask(s.byte);
                             if t < low + w {
                                 hit = Some((s.byte, w, k));
                                 break;
@@ -1072,24 +1023,23 @@ impl Ppm {
         Ok(b)
     }
 
-    /// Learn `byte`, which was coded as `found` says, and find the next
-    /// byte's longest context.
+    /// Learns `byte`, which was coded as `found` says, and sets the next byte's
+    /// longest context.
     ///
     /// The byte is counted in the context that coded it and added to every
-    /// longer one; shorter contexts are left alone (update exclusion), but
-    /// for the next shorter one's half-weight count (§2.2). The longer ones
-    /// that do not exist yet, orders `top_order + 1` up to [`MAX_ORDER`], are
-    /// created first, holding the byte with their counts pending: each is
-    /// the context one shorter, before the previous byte, followed by that
-    /// byte, so it is linked from where that byte was learned last time
-    /// (`learned`). Right after a restart those contexts are gone; the new
-    /// ones are then kept as orphans, and each is linked when a symbol that
-    /// leads to it is added.
+    /// longer one. Shorter contexts are left alone but for the half count of
+    /// §2.2. The longer contexts that do not exist yet, orders `top_order + 1`
+    /// to [`MAX_ORDER`], are created first with their counts pending. Each is
+    /// the context one shorter before the previous byte, followed by that byte,
+    /// so it is linked from where that byte was learned last time (`learned`).
+    /// Right after a restart those places are gone. The new contexts are then
+    /// kept as orphans, and each is linked when a symbol that leads to it is
+    /// added.
     ///
-    /// The next byte's longest context is then the one the byte leads to in
-    /// the context that coded it. A longer one exists only if a symbol
-    /// added now leads to an orphan. When the arena or the context limit is
-    /// reached, the model restarts first.
+    /// The next byte's longest context is the one the byte leads to in the
+    /// context that coded it, or a longer one if a symbol added now leads to an
+    /// orphan. If the nodes or the slots are about to run out, the model
+    /// restarts first.
     fn update(&mut self, byte: u8, mut found: Found) {
         let likely = match found {
             Found::Ctx { w, t, .. } | Found::Order0 { w, t } => 2 * w > t,
@@ -1108,11 +1058,7 @@ impl Ppm {
             // Shkarin's update of the parent (§2.2): below the longest order,
             // while the symbol's count here is under 8, count it at half
             // weight in the suffix too.
-            let count = match at {
-                At::Node(i) => self.nodes[i as usize].total,
-                At::Slot(s) => self.slots.slots[s as usize].count,
-            };
-            if updates_parent(order, count) {
+            if updates_parent(order, self.count_at(at)) {
                 if order == 1 {
                     self.count_order0(byte, 1);
                 } else {
@@ -1147,13 +1093,7 @@ impl Ppm {
         // What a byte added to an existing context inherits from (§2.1): its
         // count, and the total, where it was coded.
         let source = match found {
-            Found::Ctx { order, at, .. } => {
-                let count = match at {
-                    At::Node(i) => self.nodes[i as usize].total,
-                    At::Slot(s) => self.slots.slots[s as usize].count,
-                };
-                Some((count, self.nodes[self.ctx[order] as usize].total))
-            }
+            Found::Ctx { order, at, .. } => Some((self.count_at(at), self.nodes[self.ctx[order] as usize].total)),
             Found::Order0 { .. } => Some((self.order0[usize::from(byte)], self.order0_total as u16)),
             Found::Nowhere => None,
         };
@@ -1212,7 +1152,7 @@ impl Ppm {
         self.seen += 1;
     }
 
-    /// Point the symbol at `at` to context `n`, which has just been created.
+    /// Points the symbol at `at` to the new context `n`.
     fn link(&mut self, at: At, n: u32) {
         debug_assert!(
             self.next_of(at) == 0 && u64::from(self.byte_at(at)) == self.hist & 0xFF,
@@ -1221,7 +1161,8 @@ impl Ppm {
         self.set_next(at, n);
     }
 
-    /// The orphan with this key, now no longer an orphan, or 0.
+    /// Removes the orphan with this key from the list and returns it, or
+    /// returns 0.
     fn adopt(&mut self, key: u64) -> u32 {
         for k in 0..self.n_orphans {
             if self.orphans[k].0 == key {
@@ -1234,10 +1175,9 @@ impl Ppm {
         0
     }
 
-    /// Count the symbol at `at` once in context `i`. A symbol that now
-    /// outcounts its neighbor moves one place forward, so the frequent
-    /// symbols, which are most often the one sought, are found first. Where
-    /// the symbol is afterward.
+    /// Counts the symbol at `at` in context `i` and returns where it is now. A
+    /// symbol that outcounts the one before it moves one place forward, which
+    /// keeps frequent symbols near the front of the scan.
     fn count(&mut self, i: u32, at: At) -> At {
         debug_assert!(self.nodes[i as usize].total != 0, "a pending context's count was read");
         let At::Slot(slot) = at else {
@@ -1258,10 +1198,10 @@ impl Ppm {
         At::Slot(c.link + k as u32)
     }
 
-    /// Add `byte`, which context `i` does not hold, with count `count` (half
-    /// units) and leading to `next`. A context's second symbol moves both
-    /// into an array of two slots; a full array moves to one twice its size,
-    /// and the old one is freed. Where the symbol is.
+    /// Adds `byte`, which context `i` does not hold, with `count` half units
+    /// and leading to `next`, and returns where it is. A second symbol moves
+    /// both into an array of two slots. A full array moves to one of twice the
+    /// size, and the old one is freed.
     fn add(&mut self, i: u32, byte: u8, next: u32, count: u16) -> At {
         let c = self.nodes[i as usize];
         let len = c.len();
@@ -1291,8 +1231,8 @@ impl Ppm {
         At::Slot((start + len) as u32)
     }
 
-    /// Count `byte` in the order-0 table, `n` in half units, halving every
-    /// count when the total passes [`MAX_TOTAL`].
+    /// Counts `byte` in the order-0 table by `n` half units. Every count is
+    /// halved when the total passes [`MAX_TOTAL`].
     fn count_order0(&mut self, byte: u8, n: u16) {
         let c = &mut self.order0[usize::from(byte)];
         if *c == 0 {
@@ -1309,9 +1249,8 @@ impl Ppm {
         }
     }
 
-    /// Count `byte`, which context `i` holds, at half weight (Shkarin's
-    /// update of the parent, §2.2). Like a full count, it may move the
-    /// symbol one place forward.
+    /// Counts `byte`, which context `i` holds, at half weight (§2.2). Like a
+    /// full count, it may move the symbol one place forward.
     fn count_half(&mut self, i: u32, byte: u8) {
         let c = self.nodes[i as usize];
         debug_assert!(c.total != 0, "a pending context's count was read");
@@ -1328,9 +1267,8 @@ impl Ppm {
         self.add_to_total(i, 1);
     }
 
-    /// Add `n` to the total of context `i`. When the total passes
-    /// [`MAX_TOTAL`], every count is halved (rounding up, so none reaches
-    /// 0): older statistics fade, and counts stay small.
+    /// Adds `n` to the total of context `i`. When the total passes
+    /// [`MAX_TOTAL`] every count is halved, so old statistics fade.
     fn add_to_total(&mut self, i: u32, n: u16) {
         let c = &mut self.nodes[i as usize];
         c.total += n;
@@ -1355,7 +1293,7 @@ impl Ppm {
 mod tests {
     use super::*;
 
-    /// Code `data` and decode it with models from `make`, restarting both
+    /// Codes `data` and decodes it with models from `make`, restarting both
     /// before every byte `restart_at` names; the code's length and the
     /// encoder's restarts.
     fn roundtrip(data: &[u8], make: impl Fn() -> Ppm, restart_at: impl Fn(usize) -> bool) -> (usize, u32) {
@@ -1434,8 +1372,8 @@ mod tests {
         // A tiny arena and context limit: restarts every few hundred bytes,
         // including right after bytes coded in high-order contexts.
         // The context limit is reached first here, then the arena.
-        for (syms, ctx_log2) in [(1 << 20, 10), (3200, 16)] {
-            let (len, restarts) = roundtrip(&data, || Ppm::with_limits(syms, ctx_log2, data.len()), |_| false);
+        for (syms, contexts) in [(1 << 20, 768), (3200, 49_152)] {
+            let (len, restarts) = roundtrip(&data, || Ppm::with_limits(syms, contexts, data.len()), |_| false);
             // A restart empties the model; it must then fill up again
             // rather than restart on every byte.
             assert!(restarts > 20 && (restarts as usize) < data.len() / 50, "{restarts}");
@@ -1460,15 +1398,15 @@ mod tests {
     /// and reach them for the largest blocks the format allows.
     #[test]
     fn reservations_are_bounded_for_any_block_length() {
-        let most = (SYM_SLOTS, 1 + Ppm::context_limit(CTX_LOG2) + MAX_ORDER);
+        let most = (SYM_SLOTS, 1 + MAX_CONTEXTS + MAX_ORDER);
         for len in [0, 1, 1 << 16, 1 << 24, 179 << 20, 1 << 29, 1 << 30, usize::MAX / 24 + 1, usize::MAX] {
-            let (slots, nodes) = Ppm::capacities(SYM_SLOTS, CTX_LOG2, len);
+            let (slots, nodes) = Ppm::capacities(SYM_SLOTS, MAX_CONTEXTS, len);
             assert!(slots <= most.0 && nodes <= most.1, "{len}");
             assert!(Ppm::memory(len) <= Ppm::memory(usize::MAX), "{len}");
         }
-        assert_eq!(Ppm::capacities(SYM_SLOTS, CTX_LOG2, 1 << 30), most);
-        assert_eq!(Ppm::capacities(SYM_SLOTS, CTX_LOG2, usize::MAX), most);
-        assert_eq!(Ppm::capacities(SYM_SLOTS, CTX_LOG2, 1000), (24_000, 1 + 6000 + MAX_ORDER));
+        assert_eq!(Ppm::capacities(SYM_SLOTS, MAX_CONTEXTS, 1 << 30), most);
+        assert_eq!(Ppm::capacities(SYM_SLOTS, MAX_CONTEXTS, usize::MAX), most);
+        assert_eq!(Ppm::capacities(SYM_SLOTS, MAX_CONTEXTS, 1000), (24_000, 1 + 6000 + MAX_ORDER));
     }
 
     /// Equation (5) for a context that holds others, by hand: a byte seen 10

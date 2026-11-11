@@ -17,6 +17,8 @@ cargo build --release    # target/release/acz, unacz, aczcat
 cargo test --release
 ```
 
+The manual page is `docs/acz.1`; read it with `man docs/acz.1`.
+
 ## Using acz
 
 ```sh
@@ -102,17 +104,28 @@ still processed). If the reader of standard output closes early, as in
 | `-1` | the previous byte |
 | `-0` | byte frequencies alone |
 
+Every level codes its predictions with an arithmetic coder from the library.
+Levels 0 and 1 use the multi-symbol coder with bit normalization, level 3
+the multi-symbol coder with byte normalization, and levels 2 and 4 the
+binary coder with byte normalization. The byte-normalized form is often
+called a range coder.
+
 Level 3 keeps its contexts in a trie stored in two arrays. Each symbol of
 a context points to the context that follows it, and each context points
 to the same context less its oldest byte. These links replace global
 context-table searches; after a restart, a short list matches the initial
-contexts to their incoming symbols. Release 0.5.0 used a translation of
-7-Zip's `Ppmd7` (by Igor Pavlov, after Dmitry Shkarin's PPMd) for level 3;
-that code has been removed. The current model uses binary escape classes,
+contexts to their incoming symbols. The model uses binary escape classes,
 half-weight parent updates, information inheritance and a class-based escape
 frequency learner, based on Shkarin's published methods with the integer
-choices documented in `acz/src/ppm.rs`. Level 3 uses the multi-symbol range
-coder in `arith/src/multirange.rs`.
+choices documented in `acz/src/ppm.rs`. Its coder is in
+`arith/src/multirange.rs`.
+
+Level 4 follows the published descriptions of the PAQ architecture: context
+models with bit histories, two logistic mixers and two adaptive probability
+maps. Its tables are computed from the logistic function's definition, the
+maps update both knots around a prediction, and a sequential test on
+predictive code lengths finds record lengths. `acz/src/cm.rs` gives the
+derivations and the papers.
 
 At the default 16 MiB block size, memory planning budgets about 213 MiB
 per `-4` worker, so a 4 GiB budget admits 19 workers. For `-3` with multiple
@@ -153,16 +166,16 @@ the whole corpus, the median of three runs.
 
 | program | bytes | % of input | encode (s) | decode (s) |
 |---|---:|---:|---:|---:|
-| `acz -4` | 42,764,432 | 20.18 | 164.07 | 170.55 |
+| `acz -4` | 42,443,079 | 20.03 | 152.09 | 159.56 |
 | `xz -9` | 48,795,480 | 23.02 | 63.89 | 1.60 |
 | 7-Zip PPMd, order 6 | 49,029,343 | 23.13 | 15.77 | 16.90 |
-| `acz -3` | 50,601,960 | 23.88 | 21.64 | 23.56 |
+| `acz -3` | 50,601,960 | 23.88 | 20.28 | 19.73 |
 | `zstd -19` | 53,024,529 | 25.02 | 60.52 | 0.18 |
 | `bzip2 -9` | 54,506,769 | 25.72 | 9.22 | 3.96 |
 | `gzip -9` | 67,631,918 | 31.91 | 11.37 | 0.75 |
-| `acz -2` | 69,610,084 | 32.84 | 6.31 | 9.55 |
-| `acz -1` | 94,356,023 | 44.52 | 8.69 | 9.60 |
-| `acz -0` | 127,167,804 | 60.00 | 9.92 | 10.48 |
+| `acz -2` | 69,610,084 | 32.84 | 6.12 | 9.54 |
+| `acz -1` | 94,356,023 | 44.52 | 8.81 | 9.39 |
+| `acz -0` | 127,167,804 | 60.00 | 10.02 | 10.31 |
 
 Held-out collections: a sample of the U.S. Census Bureau's public data files
 and a sample of Backblaze's hard drive statistics, each file compressed whole
@@ -170,8 +183,8 @@ with one thread. Sizes are percentages of input.
 
 | collection | files | input | `acz -4` | `xz -9` | `zstd -19` | `acz -3` |
 |---|---:|---:|---:|---:|---:|---:|
-| Census | 11,058 | 269.1 GB | 9.89 | 10.49 | 11.12 | 13.60 |
-| Backblaze | 688 | 248.3 GB | 8.40 | 8.76 | 9.13 | 10.61 |
+| Census | 11,058 | 269.1 GB | 9.81 | 10.49 | 11.12 | 13.60 |
+| Backblaze | 688 | 248.3 GB | 8.32 | 8.76 | 9.13 | 10.61 |
 
 The [technical report](report/output/pdf/arith-acz-technical-report-draft.pdf)
 gives the per-file results and how they were measured; its
@@ -224,11 +237,11 @@ Repeat removal and reconstruction run in stream order.
 The full specification is the documentation of
 [`acz/src/format.rs`](acz/src/format.rs).
 
-The current format is version 13. Format changes increment the version;
-the decoder rejects unsupported versions, so files written by release 0.5.0
-(version 11), at any level, need that release to decode. Version 12 was
-never released. Format
-compatibility is not guaranteed before release 1.0.
+The current format is version 14. Format changes increment the version;
+the decoder rejects unsupported versions, so files written by release 0.6.0
+(version 13) or release 0.5.0 (version 11), at any level, need that release
+to decode. Version 12 was never released. Format compatibility is not
+guaranteed before release 1.0.
 
 ## License
 

@@ -20,6 +20,10 @@ DATA = ROOT / "data"
 BUILD = ROOT / "build"
 OUTPUT = ROOT / "output" / "pdf" / "arith-acz-technical-report-draft.pdf"
 PPMD_RUN = "ppmd-v10-debc62e"
+# Release 0.7.0 (format 14), every acz configuration, timed in one run.
+V14_RUN = "silesia-v14-af3e950-run2"
+V14_CODECS = {"acz14 -4": "acz4", "acz14 -3": "acz3", "acz14 -2": "acz2", "acz14 -1": "acz1",
+              "acz14 -0": "acz0", "acz14 -4 --dedup": "acz4dedup"}
 TREE_RUN = "trie-v4-run3"
 TREE_BLOCKS = "trie-v4-blocks"
 REPETITIONS = ("1", "2", "3")
@@ -36,10 +40,10 @@ HISTORICAL_LABELS = {
     "acz1": "acz -1",
     "acz0": "acz -0",
 }
-# The report's configurations: level 3 is the PPM on the context trie,
-# measured with the selected model/coder in run5 with three repetitions; 7-Zip's
-# PPMd is a comparator from the format-10 experiment.
-LABELS = dict(HISTORICAL_LABELS, acz3="acz -3 (PPM)", ppmd7z="7-Zip PPMd -o6")
+# The report's configurations: every acz row is release 0.7.0, from V14_RUN;
+# the other compressors keep their rows, and 7-Zip's PPMd is a comparator
+# from the format-10 experiment.
+LABELS = dict(HISTORICAL_LABELS, acz3="acz -3 (PPM)", acz4dedup="acz -4 + repeats", ppmd7z="7-Zip PPMd -o6")
 TREE_REPETITIONS = ("1", "2", "3", "4")
 # Source snapshots that contain the PPMd-H port acz no longer includes. The
 # public repository omits them; where present, their hashes are checked.
@@ -73,9 +77,51 @@ def historical_rows():
     return rows
 
 
+def v14_rows(historical, sizes):
+    """The 0.7.0 run in the original schema, one row per attempt.
+
+    The run's script stops at the first failed exit status or round trip and
+    writes DONE after the last configuration, so a complete file means every
+    attempt succeeded. It records user plus system time as one number, which
+    is kept in the user column. Its corpus manifest, identified in env.txt,
+    must name the inputs of the original experiment.
+    """
+    folder = DATA / V14_RUN
+    env = (folder / "env.txt").read_text()
+    for name in ("bench.sh", "silesia.sha256"):
+        if hashlib.sha256((folder / name).read_bytes()).hexdigest() not in env:
+            raise ValueError(f"0.7.0 run: {name} is not the file the run recorded")
+    hashes = {r["file"]: r["sha256"] for r in historical}
+    manifest = dict(reversed(line.split()) for line in (folder / "silesia.sha256").read_text().splitlines())
+    if manifest != hashes:
+        raise ValueError("0.7.0 run: corpus differs from the original experiment")
+    lines = (folder / "rows.tsv").read_text().splitlines()
+    if lines[-1] != "DONE" or (folder / "err.log").read_text():
+        raise ValueError("0.7.0 run is incomplete")
+    rows, totals = [], {}
+    for line in lines[:-1]:
+        cells = line.split("\t")
+        codec = V14_CODECS[cells[0]]
+        if cells[1] == "TOTAL":
+            totals[codec] = int(cells[2])
+            continue
+        _, name, packed, _, _, enc, dec = cells
+        enc, dec = enc.split(","), dec.split(",")
+        if len(enc) != len(REPETITIONS) or len(dec) != len(REPETITIONS):
+            raise ValueError(f"0.7.0 run: wrong repetition count: {line}")
+        for rep, e, d in zip(REPETITIONS, enc, dec):
+            rows.append(dict(rep=rep, file=name, codec=codec, bytes=str(sizes[name]), sha256=hashes[name],
+                             packed=packed, enc_user=e, enc_sys="0", enc_status="0",
+                             dec_user=d, dec_sys="0", dec_status="0", cmp="ok"))
+    for codec in V14_CODECS.values():
+        if totals.get(codec) != sum(int(r["packed"]) for r in rows if r["codec"] == codec and r["rep"] == "1"):
+            raise ValueError(f"0.7.0 run: total differs for {codec}")
+    return rows
+
+
 def selected_rows():
-    """Level 3 from run5, 7-Zip's PPMd from the format-10 run, and
-    the unchanged configurations from the original experiment."""
+    """Every acz configuration from the 0.7.0 run, 7-Zip's PPMd from the
+    format-10 run, and the other compressors from the original experiment."""
     historical = historical_rows()
     sizes = validate(historical, HISTORICAL_LABELS)
     v10 = validate_ppmd_v10(read_rows(f"{PPMD_RUN}/rows.tsv"), read_rows(f"{PPMD_RUN}/restarts.tsv"), historical, sizes)
@@ -88,11 +134,17 @@ def selected_rows():
     hashes = {r["file"]: r["sha256"] for r in historical}
     if {n: (v["bytes"], v["sha256"]) for n, v in inputs.items()} != {n: (sizes[n], hashes[n]) for n in sizes}:
         raise ValueError("Run5 input identities differ from the corpus")
-    ppm = [dict(rep=r["rep"], file=r["file"], codec="acz3", bytes=str(sizes[r["file"]]),
-                sha256=hashes[r["file"]], packed=r["bytes"],
-                **{k: r[k] for k in ("enc_user", "enc_sys", "enc_status", "dec_user", "dec_sys", "dec_status", "cmp")})
-           for r in current if r["build"] == "new"]
-    return [r for r in historical if r["codec"] != "acz3"] + ppm + reference
+    # Levels 0 to 3 are unchanged since run 5 and the original experiment,
+    # so their sizes must be too, less nothing: the header is the same length.
+    new = v14_rows(historical, sizes)
+    packed = {(r["file"], r["codec"]): r["packed"] for r in new}
+    for r in historical:
+        if r["codec"] in ("acz0", "acz1", "acz2") and packed[r["file"], r["codec"]] != r["packed"]:
+            raise ValueError(f"0.7.0 changed the size of {r['file']} at {r['codec']}")
+    for r in current:
+        if r["build"] == "new" and packed[r["file"], "acz3"] != r["bytes"]:
+            raise ValueError(f"0.7.0 changed the level-3 size of {r['file']}")
+    return [r for r in historical if not r["codec"].startswith("acz")] + new + reference
 
 
 def repetitions(codec):
@@ -245,6 +297,22 @@ def write_ppm_metrics(rows, sizes, results):
         values = [sum(Decimal(r[f"{side}_user"]) + Decimal(r[f"{side}_sys"])
                       for r in rows if r["codec"] == "acz3" and r["rep"] == rep) for rep in repetitions("acz3")]
         macros["Ppm" + ("Encode" if side == "enc" else "Decode") + "Range"] = f"{min(values):.2f}--{max(values):.2f}"
+    xz, o2, dd = (results[k] for k in ("xz9", "acz2", "acz4dedup"))
+    raw = sum(sizes.values())
+    macros.update({
+        "CmBytes": f"{cm['bytes']:,}", "CmMB": f"{cm['bytes'] / 1e6:.2f}", "CmFraction": f"{100 * cm['fraction']:.2f}",
+        "InputMB": f"{raw / 1e6:.2f}",
+        "CmEncode": f"{Decimal(cm['enc']):.2f}", "CmDecode": f"{Decimal(cm['dec']):.2f}",
+        "CmSmallerXz": f"{100 * (1 - cm['bytes'] / xz['bytes']):.2f}",
+        "CmXzEncodeRatio": f"{Decimal(cm['enc']) / Decimal(xz['enc']):.2f}",
+        "CmXzDecodeRatio": f"{Decimal(cm['dec']) / Decimal(xz['dec']):.0f}",
+        "OTwoEncode": f"{Decimal(o2['enc']):.2f}", "OTwoFraction": f"{100 * o2['fraction']:.2f}",
+        "DedupBytes": f"{dd['bytes']:,}", "DedupLarger": f"{100 * (dd['bytes'] / cm['bytes'] - 1):.3f}",
+        "DedupEncode": f"{Decimal(dd['enc']):.2f}", "DedupDecode": f"{Decimal(dd['dec']):.2f}",
+        "DedupEncodeLess": f"{100 * (1 - Decimal(dd['enc']) / Decimal(cm['enc'])):.2f}",
+        "DedupDecodeLess": f"{100 * (1 - Decimal(dd['dec']) / Decimal(cm['dec'])):.2f}",
+        "PpmPortLarger": f"{100 * (ppm['bytes'] / 49_224_897 - 1):.2f}",
+    })
     macros.update({k: str(v) for k, v in tree_blocks(sizes).items()})
     macros.update(write_storage_table())
     (BUILD / "metrics.tex").write_text("\n".join(rf"\newcommand{{\{k}}}{{{v}}}" for k, v in macros.items()) + "\n")
@@ -572,7 +640,7 @@ def write_coded_commands(historical, results):
     (BUILD / "coded-command-metrics.tex").write_text(
         "\n".join(rf"\newcommand{{\{key}}}{{{value}}}" for key, value in macros.items()) + "\n")
     # Model 3 of that experiment was the PPMd-H port; only CM is reported.
-    off = results["acz4"]["bytes"]
+    off = sum(int(r["packed"]) for r in historical if r["codec"] == "acz4" and r["rep"] == "1")
     write_table("coded-commands.tex", [["CM", f"{off:,}", f"{totals[4]:,}", f"{off - totals[4]:,}"]])
     return absent
 
@@ -620,7 +688,7 @@ def main():
     import build_heldout_results
     build_heldout_results.write_tables(BUILD)
     typeset()
-    print(f"Validated 360 historical and {len(rows)} selected attempts, the 96-case trie run, 19 trie blocks, "
+    print(f"Validated 360 historical and {len(rows)} selected attempts (216 of release 0.7.0), the 96-case trie run, 19 trie blocks, "
           f"both 72-row diagnostics, 190 ablation blocks, 24 v11 containers, 108 run5 attempts, "
           f"759 development code sizes, 12 format13 identity records and 11,746 held-out inputs; wrote {OUTPUT}")
     for name in absent:

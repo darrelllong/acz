@@ -4,8 +4,8 @@
 //
 // Dedicated to the memory of my colleague Glen G. Langdon
 
-//! The arithmetic coding engine: interval narrowing, renormalization,
-//! carry (pending-bit) handling and termination.
+//! The bit-wise arithmetic coder: interval narrowing, renormalization, pending
+//! bits for the carry, and termination.
 
 use std::io::{self, Read, Write};
 
@@ -19,13 +19,12 @@ const HALF: u64 = 1 << (CODE_BITS - 1);
 const QUARTER: u64 = 1 << (CODE_BITS - 2);
 const THREE_QUARTERS: u64 = HALF + QUARTER;
 
-/// Largest permissible `total` passed to [`Encoder::encode`] /
-/// [`Decoder::target`].
+/// The largest `total` an event may have.
 ///
-/// After renormalization the interval width always exceeds a quarter of the
-/// code space (2³⁰), so any `total ≤ 2³⁰` guarantees every symbol with a
-/// non-zero frequency receives a non-empty sub-interval, and every product
-/// `width × cum` is at most 2⁶² and fits in a `u64`.
+/// After renormalization the interval is wider than a quarter of the code
+/// space, 2³⁰. With `total ≤ 2³⁰` every symbol of non-zero frequency gets a
+/// non-empty sub-interval, and every product of a width and a cumulative count
+/// is at most 2⁶².
 pub const MAX_TOTAL: u32 = 1 << (CODE_BITS - 2);
 
 #[inline]
@@ -36,12 +35,10 @@ fn check_interval(cum_low: u32, cum_high: u32, total: u32) {
     );
 }
 
-/// Narrow `[low, high]` to the sub-interval `[cum_low, cum_high)` of
-/// `[0, total)`. Both endpoints use the old `low`, so `high` must be
-/// assigned first. The width includes both endpoints; subtracting one at
-/// the upper boundary converts the half-open model interval to that closed
-/// representation. The `MAX_TOTAL` bound keeps every positive frequency
-/// non-empty after integer rounding.
+/// Narrows `[low, high]` to the sub-interval `[cum_low, cum_high)` of
+/// `[0, total)`. Both ends are computed from the old `low`, so `high` is
+/// assigned first. The interval is closed, hence the `+ 1` in the width and the
+/// `− 1` at the upper end.
 #[inline]
 fn narrow(low: &mut u64, high: &mut u64, cum_low: u32, cum_high: u32, total: u32) {
     let range = *high - *low + 1;
@@ -73,7 +70,7 @@ impl<W: Write> BitWriter<W> {
         Ok(())
     }
 
-    /// Pad the final partial byte with zeros and return the sink.
+    /// Pads the last byte with zeros and returns the sink.
     fn finish(mut self) -> io::Result<W> {
         if self.nbits > 0 {
             let b = self.byte << (8 - self.nbits);
@@ -84,14 +81,13 @@ impl<W: Write> BitWriter<W> {
     }
 }
 
-/// Arithmetic encoder writing a bit stream into any [`Write`] sink.
+/// An arithmetic encoder writing a bit stream to any [`Write`] sink.
 ///
-/// The encoder writes one byte at a time; wrap unbuffered sinks (files,
-/// sockets, stdout) in a [`std::io::BufWriter`].
-///
-/// Call [`Encoder::finish`] to write the tail of the code string; dropping
-/// the encoder without finishing loses that tail. After an I/O failure, the internal state may no longer match the output;
-/// later coding calls return an error, so recovery requires a new encoder.
+/// The encoder writes a byte at a time, so an unbuffered sink (a file, a
+/// socket, stdout) should be wrapped in a [`std::io::BufWriter`].
+/// [`Encoder::finish`] writes the tail of the code string; dropping the encoder
+/// without it loses the tail. After an I/O error the state may not match the
+/// output, and every later call fails.
 pub struct Encoder<W: Write> {
     low: u64,
     high: u64,
@@ -107,13 +103,12 @@ pub(crate) fn poisoned_error() -> io::Error {
 }
 
 impl<W: Write> Encoder<W> {
-    /// Create an encoder writing to `sink`.
+    /// Returns an encoder writing to `sink`.
     pub fn new(sink: W) -> Self {
         Encoder { low: 0, high: TOP, pending: 0, out: BitWriter::new(sink), poisoned: false }
     }
 
-    /// Encode one event occupying the sub-interval `[cum_low, cum_high)` of
-    /// `[0, total)`.
+    /// Codes one event, the sub-interval `[cum_low, cum_high)` of `[0, total)`.
     ///
     /// # Panics
     ///
@@ -127,7 +122,7 @@ impl<W: Write> Encoder<W> {
         self.renormalize()
     }
 
-    /// Encode `symbol` under `model`, then let the model adapt.
+    /// Codes `symbol` under `model`, then lets the model adapt.
     pub fn encode_symbol<M: Model + ?Sized>(&mut self, model: &mut M, symbol: usize) -> io::Result<()> {
         let (lo, hi) = model.interval(symbol);
         self.encode(lo, hi, model.total())?;
@@ -135,31 +130,29 @@ impl<W: Write> Encoder<W> {
         Ok(())
     }
 
-    /// Encode a single binary event with an adaptive [`BitModel`] (Langdon's
-    /// binary arithmetic code), then let the model adapt.
+    /// Codes a binary event with an adaptive [`BitModel`], then lets the model
+    /// adapt.
     pub fn encode_bit<const S: u8>(&mut self, model: &mut BitModel<S>, bit: bool) -> io::Result<()> {
         self.encode_split(model.split(), bit)?;
         model.update(bit);
         Ok(())
     }
 
-    /// Encode a binary event whose probability of being 1 is
-    /// `p1 / 2^16`, as supplied by an external predictor (e.g. a
-    /// context-mixing model). The decoder must call
+    /// Codes a binary event whose probability of being 1 is `p1 / 2^16`, as
+    /// supplied by an outside predictor. The decoder must call
     /// [`Decoder::decode_bit_p`] with the same `p1`.
     ///
     /// # Panics
     ///
-    /// Panics if `p1 == 0` (a 1 would be uncodable).
+    /// Panics if `p1 == 0`, which would leave no room for a 1.
     #[inline]
     pub fn encode_bit_p(&mut self, bit: bool, p1: u16) -> io::Result<()> {
         assert!(p1 > 0, "p1 must be non-zero");
         self.encode_split((1u32 << BIT_PRECISION) - u32::from(p1), bit)
     }
 
-    /// Binary event with total 2^16: identical to
-    /// `encode(0, split, 2^16)` / `encode(split, 2^16, 2^16)` but the
-    /// division by a power of two is a shift.
+    /// Codes a binary event of total 2¹⁶. It equals `encode(0, split, 2^16)` or
+    /// `encode(split, 2^16, 2^16)`, with the division done as a shift.
     #[inline]
     fn encode_split(&mut self, split: u32, bit: bool) -> io::Result<()> {
         if self.poisoned {
@@ -175,9 +168,8 @@ impl<W: Write> Encoder<W> {
         self.renormalize()
     }
 
-    /// Resolve the leading bit and all earlier middle-half shifts. Each
-    /// deferred bit is its complement: a resolved 0 with three pending
-    /// shifts emits 0111, while a resolved 1 emits 1000.
+    /// Writes a settled leading bit and the pending bits after it, which are
+    /// its complement: a 0 with three pending writes 0111, and a 1 writes 1000.
     #[inline]
     fn emit(&mut self, bit: bool) -> io::Result<()> {
         self.out.put(bit)?;
@@ -197,13 +189,13 @@ impl<W: Write> Encoder<W> {
         r
     }
 
-    /// Restore precision after narrowing (Witten–Neal–Cleary E1/E2/E3).
-    /// An interval in one half has a settled leading bit, which can be
-    /// emitted and shifted out. An interval confined to the middle half
-    /// has no settled bit yet: remove its second bit and defer the carry
-    /// decision in `pending`. Each case doubles the remaining interval.
-    /// On exit it straddles HALF and extends outside the middle half, so
-    /// its width exceeds QUARTER, as required by the next event's rounding.
+    /// Restores precision after narrowing (Witten, Neal and Cleary). An
+    /// interval within one half has a settled leading bit, which is written and
+    /// shifted out. An interval within the middle half has none yet; its second
+    /// bit is removed and the decision is deferred in `pending`. Each step
+    /// doubles the interval. On return it straddles the midpoint and reaches
+    /// outside the middle half, so it is wider than a quarter, as the next
+    /// event's rounding needs.
     #[inline]
     fn renormalize_inner(&mut self) -> io::Result<()> {
         loop {
@@ -214,8 +206,6 @@ impl<W: Write> Encoder<W> {
                 self.low -= HALF;
                 self.high -= HALF;
             } else if self.low >= QUARTER && self.high < THREE_QUARTERS {
-                // Interval straddles the midpoint but is confined to the
-                // middle half: the next bit depends on a future carry.
                 self.pending += 1;
                 self.low -= QUARTER;
                 self.high -= QUARTER;
@@ -223,19 +213,17 @@ impl<W: Write> Encoder<W> {
                 return Ok(());
             }
             self.low <<= 1;
-            // Each old integer point expands to two points; include both
-            // at the upper endpoint of the closed interval.
+            // The closed upper end doubles to an odd value.
             self.high = (self.high << 1) | 1;
         }
     }
 
-    /// Terminate the code string, flush, and return the underlying sink.
+    /// Ends the code string, flushes, and returns the sink.
     ///
-    /// The encoder emits the full 32-bit value of `low` (plus any pending
-    /// bits). `low` lies in the final interval, and because the decoder
-    /// reads exactly 32 bits up front plus one per renormalization shift, it
-    /// will consume exactly the bits written here — never more. The final
-    /// partial byte is zero-padded; the decoder discards those pad bits.
+    /// All 32 bits of `low` are written, with any pending bits. `low` lies in
+    /// the final interval, and the decoder reads 32 bits to start and one per
+    /// shift, so it reads the bits written here and no more. The last byte is
+    /// padded with zeros.
     pub fn finish(mut self) -> io::Result<W> {
         if self.poisoned {
             return Err(poisoned_error());
@@ -248,7 +236,7 @@ impl<W: Write> Encoder<W> {
         self.out.finish()
     }
 
-    /// Borrow the underlying sink.
+    /// Returns a reference to the sink.
     pub fn get_ref(&self) -> &W {
         &self.out.inner
     }
@@ -287,26 +275,22 @@ impl<R: Read> BitReader<R> {
     }
 }
 
-/// Arithmetic decoder reading a bit stream from any [`Read`] source.
+/// An arithmetic decoder reading a bit stream from any [`Read`] source.
 ///
-/// The decoder reads one byte at a time. Provided it is driven through
-/// exactly the same sequence of events as the encoder (so it knows when the
-/// message ends — by a length, an end-of-stream symbol, or framing), it
-/// stops exactly at the end of the code string produced by
-/// [`Encoder::finish`] and never reads beyond it, so the source may continue
-/// with other data (see [`Decoder::finish`]). A code string is *not*
-/// self-delimiting on its own. Wrap unbuffered sources in a
-/// [`std::io::BufReader`].
+/// The decoder reads a byte at a time, so an unbuffered source should be
+/// wrapped in a [`std::io::BufReader`]. A code string does not mark its own
+/// end. Driven through the same events as the encoder, the decoder stops at the
+/// end of the code string written by [`Encoder::finish`] and reads nothing
+/// beyond it, so the source may continue with other data (see
+/// [`Decoder::finish`]).
 ///
-/// After an I/O failure or an interval that does not contain the code
-/// value, later coding calls return an error. Retrying would use a state
-/// that may no longer match the input position.
+/// Decoding takes two steps, which lets any model drive it. [`Decoder::target`]
+/// returns a value in `[0, total)`. The caller finds the symbol whose interval
+/// `[cum_low, cum_high)` holds it and passes that interval to
+/// [`Decoder::consume`]. [`Decoder::decode_symbol`] does both for a [`Model`].
 ///
-/// Decoding is a two-step protocol, which lets any model drive it:
-/// call [`Decoder::target`] to obtain a value in `[0, total)`, map it to the
-/// symbol whose interval `[cum_low, cum_high)` contains it, then call
-/// [`Decoder::consume`] with that interval. [`Decoder::decode_symbol`] does
-/// both for a [`Model`].
+/// After an I/O error, or an interval that does not hold the code value, every
+/// later call fails.
 pub struct Decoder<R: Read> {
     low: u64,
     high: u64,
@@ -317,7 +301,8 @@ pub struct Decoder<R: Read> {
 }
 
 impl<R: Read> Decoder<R> {
-    /// Create a decoder reading from `source`. Reads the first 32 bits.
+    /// Returns a decoder reading from `source`, after reading the first 32
+    /// bits.
     pub fn new(source: R) -> io::Result<Self> {
         let mut input = BitReader::new(source);
         let mut value = 0u64;
@@ -327,38 +312,30 @@ impl<R: Read> Decoder<R> {
         Ok(Decoder { low: 0, high: TOP, value, input, poisoned: false })
     }
 
-    /// Return the scaled position of the code value within the current
-    /// interval, in `[0, total)`. The caller finds the symbol whose
-    /// cumulative interval contains this value.
+    /// Returns the position of the code value in the current interval, scaled
+    /// to `[0, total)`. The caller finds the symbol whose interval holds it.
     ///
-    /// While the decoder is healthy the invariant `low <= value <= high`
-    /// guarantees the result is `< total`, even for corrupt input. After an
-    /// error the result is meaningless (but still `< total`, and never
-    /// panics); the following [`Decoder::consume`] reports the error.
+    /// The result is below `total` even for corrupt input, because
+    /// `low <= value <= high`. After an error it is meaningless but still below
+    /// `total`, and the next [`Decoder::consume`] reports the error.
     ///
     /// # Panics
     ///
     /// Panics if `total == 0` or `total > MAX_TOTAL`.
     pub fn target(&self, total: u32) -> u32 {
         assert!(total > 0 && total <= MAX_TOTAL, "invalid total {total}");
-        // The clamps keep this read-only query defined after an error;
-        // they do not alter a healthy decoder's interval or offset.
+        // The clamps matter only after an error.
         let range = self.high.wrapping_sub(self.low).wrapping_add(1).max(1);
         let offset = self.value.saturating_sub(self.low).min(range - 1);
-        // Invert narrow's rounded boundaries: ceil((offset + 1) * T / R)
-        // minus one selects the correct event even on an integer boundary.
+        // The inverse of narrow's rounding: ⌈(offset + 1)·T / R⌉ − 1.
         let t = ((offset + 1) * u64::from(total) - 1) / range;
         t as u32
     }
 
-    /// Remove the decoded event `[cum_low, cum_high)` of `[0, total)` from
-    /// the code string. Must match the [`Encoder::encode`] call exactly.
-    ///
-    /// The interval **must contain** `self.target(total)`, i.e.
-    /// `cum_low <= target(total) < cum_high`. Any other interval would
-    /// move the code value outside the coder's interval. This is detected:
-    /// the call returns an [`io::ErrorKind::InvalidInput`] error and the
-    /// decoder is poisoned.
+    /// Removes the decoded event `[cum_low, cum_high)` of `[0, total)` from the
+    /// code string. The interval must hold `target(total)`, as the matching
+    /// [`Encoder::encode`] call did. If it does not, the call fails with
+    /// [`io::ErrorKind::InvalidInput`], and so does every later call.
     ///
     /// # Panics
     ///
@@ -388,10 +365,9 @@ impl<R: Read> Decoder<R> {
         r
     }
 
-    /// Mirror the encoder's half/middle-half shifts while keeping `value`
-    /// in the same coordinates as `low` and `high`. Each shift reads one
-    /// new bit into the low end of `value`. No pending-bit counter is
-    /// needed here: the input already contains the encoder's resolved bits.
+    /// Mirrors the encoder's shifts, keeping `value` in the coordinates of
+    /// `low` and `high`. Each shift reads one bit into `value`. The input
+    /// already holds the settled bits, so nothing is pending.
     #[inline]
     fn renormalize_inner(&mut self) -> io::Result<()> {
         loop {
@@ -414,7 +390,7 @@ impl<R: Read> Decoder<R> {
         }
     }
 
-    /// Decode one symbol under `model`, then let the model adapt.
+    /// Decodes one symbol under `model`, then lets the model adapt.
     pub fn decode_symbol<M: Model + ?Sized>(&mut self, model: &mut M) -> io::Result<usize> {
         let total = model.total();
         let target = self.target(total);
@@ -424,15 +400,15 @@ impl<R: Read> Decoder<R> {
         Ok(symbol)
     }
 
-    /// Decode a single binary event with an adaptive [`BitModel`], then let
-    /// the model adapt.
+    /// Decodes a binary event with an adaptive [`BitModel`], then lets the
+    /// model adapt.
     pub fn decode_bit<const S: u8>(&mut self, model: &mut BitModel<S>) -> io::Result<bool> {
         let bit = self.decode_split(model.split())?;
         model.update(bit);
         Ok(bit)
     }
 
-    /// Decode a binary event encoded with [`Encoder::encode_bit_p`].
+    /// Decodes a binary event coded with [`Encoder::encode_bit_p`].
     ///
     /// # Panics
     ///
@@ -443,10 +419,14 @@ impl<R: Read> Decoder<R> {
         self.decode_split((1u32 << BIT_PRECISION) - u32::from(p1))
     }
 
-    /// Division-free binary decode, exactly inverse to
-    /// `Encoder::encode_split`. With `mid = low + ⌊range·split / 2¹⁶⌋`,
-    /// `target(2¹⁶) >= split  ⇔  (value−low+1)·2¹⁶ > range·split
-    ///  ⇔  value−low >= ⌊range·split / 2¹⁶⌋  ⇔  value >= mid`.
+    /// Decodes a binary event of total 2¹⁶ without dividing; the inverse of
+    /// `Encoder::encode_split`. With `mid = low + ⌊range·split / 2¹⁶⌋`:
+    ///
+    /// ```text
+    /// target(2¹⁶) >= split  ⇔  (value − low + 1)·2¹⁶ > range·split
+    ///                       ⇔  value − low >= ⌊range·split / 2¹⁶⌋
+    ///                       ⇔  value >= mid
+    /// ```
     #[inline]
     fn decode_split(&mut self, split: u32) -> io::Result<bool> {
         if self.poisoned {
@@ -464,23 +444,20 @@ impl<R: Read> Decoder<R> {
         Ok(bit)
     }
 
-    /// `true` if the decoder sits exactly where [`Encoder::finish`] leaves
-    /// a well-formed code string: the code value equals the final `low`
-    /// (the encoder writes `low` itself) and the unread pad bits of the
-    /// current byte are zero.
+    /// Reports whether the decoder sits where [`Encoder::finish`] leaves a
+    /// well-formed code string: the code value equals the final `low`, which
+    /// the encoder writes, and the unread pad bits of the current byte are
+    /// zero.
     ///
-    /// Check after the last event to reject alternative representations
-    /// of the same event sequence. This does not check for trailing bytes
-    /// in the source; the caller must check its payload boundary separately.
+    /// Checking this after the last event rejects other representations of the
+    /// same events. It does not look for trailing bytes in the source.
     pub fn is_canonical_end(&self) -> bool {
         let mask = (1u16 << self.input.nbits) - 1;
         !self.poisoned && self.value == self.low && u16::from(self.input.byte) & mask == 0
     }
 
-    /// Finish decoding and return the underlying source.
-    ///
-    /// The source is positioned at the first byte after the code string
-    /// (the zero pad bits of the last byte are discarded).
+    /// Ends decoding and returns the source, positioned at the first byte after
+    /// the code string.
     pub fn finish(self) -> R {
         self.input.inner
     }

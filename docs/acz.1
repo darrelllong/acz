@@ -1,0 +1,226 @@
+.\" Copyright (c) 2026 Darrell D. E. Long. All rights reserved.
+.\" Use and redistribution are subject to the BSD 3-clause license, with a
+.\" dedication clause, in the LICENSE file at the root of this repository.
+.\"
+.\" Dedicated to the memory of my colleague Glen G. Langdon
+.Dd November 10, 2026
+.Dt ACZ 1
+.Os
+.Sh NAME
+.Nm acz ,
+.Nm unacz ,
+.Nm aczcat
+.Nd compress and decompress files with an adaptive arithmetic coder
+.Sh SYNOPSIS
+.Nm acz
+.Op Fl cdfkqtvz
+.Op Fl 0 | 1 | 2 | 3 | 4
+.Op Fl T Ar threads
+.Op Fl o Ar file
+.Op Fl -block Ns = Ns Ar size
+.Op Fl -dedup Ns Op = Ns Ar size
+.Op Fl -memory Ns = Ns Ar size
+.Op Fl -rm
+.Op Ar
+.Nm unacz
+.Op Ar option ...
+.Op Ar
+.Nm aczcat
+.Op Ar option ...
+.Op Ar
+.Sh DESCRIPTION
+.Nm
+compresses each
+.Ar file
+into
+.Ar file Ns Pa .acz
+with an adaptive model and an arithmetic coder.
+.Nm unacz
+is
+.Nm
+.Fl d ,
+and
+.Nm aczcat
+is
+.Nm
+.Fl dc .
+With no
+.Ar file ,
+or when
+.Ar file
+is
+.Sq - ,
+they read standard input and write standard output.
+.Pp
+Input files are kept unless
+.Fl -rm
+is given.
+An existing output is not replaced unless
+.Fl f
+is given.
+Compressed data is neither written to nor read from a terminal unless
+.Fl f
+is given.
+.Pp
+The input is coded in independent blocks, on as many threads as the
+memory limit allows.
+The output does not depend on the number of threads.
+Decompression needs no options: the model, the block size and the
+long-repeat window are read from the stream.
+Concatenated
+.Pa .acz
+streams decompress to the concatenation of their contents.
+.Pp
+The options are as follows:
+.Bl -tag -width Ds
+.It Fl z , Fl -compress
+Compress.
+This is the default for
+.Nm .
+.It Fl d , Fl -decompress , Fl -uncompress
+Decompress.
+This is the default for
+.Nm unacz
+and
+.Nm aczcat .
+.It Fl t , Fl -test
+Check the integrity of compressed files and write nothing.
+.It Fl c , Fl -stdout , Fl -to-stdout
+Write to standard output and keep the input files.
+.It Fl o Ar file , Fl -output Ns = Ns Ar file
+Write all output to
+.Ar file .
+Several inputs make one stream of several members.
+.It Fl f , Fl -force
+Replace existing outputs, and allow compressed data on a terminal.
+.It Fl k , Fl -keep
+Keep the input files.
+This is the default.
+.It Fl -rm
+Remove each input file once its output is complete.
+.It Fl 0 , 1 , 2 , 3 , 4 ; Fl -order Ns = Ns Ar n
+Choose the model.
+The default is
+.Fl 4 .
+.Bl -tag -width 2n -compact
+.It Cm 0
+Byte frequencies alone.
+.It Cm 1
+The previous byte.
+.It Cm 2
+The previous two bytes, a bit at a time.
+.It Cm 3
+Prediction by partial matching, with contexts of up to six bytes.
+.It Cm 4
+Context mixing, which compresses best and takes longest.
+.El
+.It Fl T Ar n , Fl -threads Ns = Ns Ar n
+Use at most
+.Ar n
+worker threads.
+The default, and 0, mean all available cores.
+.It Fl -block Ns = Ns Ar size , Fl -block-size Ns = Ns Ar size
+Set the block size, from 64K to 1G.
+The default is 16M.
+Larger blocks compress better and smaller ones use more threads.
+.It Fl -dedup Ns Op = Ns Ar size
+Replace repeats of 256 bytes or more, found up to
+.Ar size
+back, by copy commands.
+The default
+.Ar size
+is 256M and the largest is 64G; it must exceed the block size.
+The value must follow
+.Sq = .
+.It Fl -no-dedup
+Do not replace long repeats.
+This is the default.
+Of
+.Fl -dedup
+and
+.Fl -no-dedup ,
+the last one given wins.
+.It Fl -memory Ns = Ns Ar size
+Set the memory limit.
+The default,
+.Cm auto ,
+is half of physical memory, or of a smaller cgroup limit, or 4G if neither
+is known.
+Fewer threads are used if the limit requires, and a stream that cannot fit
+is refused before anything is allocated.
+.It Fl v , Fl -verbose
+Report compression statistics on standard error.
+.It Fl q , Fl -quiet
+Suppress warnings.
+.It Fl h , Fl -help
+Print a summary of the options.
+.It Fl V , Fl -version
+Print the version.
+.El
+.Pp
+A
+.Ar size
+is a number of bytes, optionally followed by
+.Cm K ,
+.Cm M
+or
+.Cm G
+for powers of 1024, in either case, each optionally followed by
+.Cm B
+or
+.Cm iB .
+Block and window sizes are rounded up to a power of two.
+The value of a long option may follow
+.Sq =
+or be the next argument, except for
+.Fl -dedup .
+.Sh EXIT STATUS
+.Bl -tag -width 4n -compact
+.It 0
+Success.
+.It 1
+An error occurred.
+.It 141
+Standard output was closed before the output was complete.
+.El
+.Sh EXAMPLES
+Compress a file, leaving
+.Pa notes.txt
+and writing
+.Pa notes.txt.acz :
+.Pp
+.Dl acz notes.txt
+.Pp
+Decompress it:
+.Pp
+.Dl unacz notes.txt.acz
+.Pp
+Compress a tar stream on eight threads with long-repeat removal:
+.Pp
+.Dl tar cf - src | acz -T8 --dedup > src.tar.acz
+.Pp
+Check a compressed file:
+.Pp
+.Dl acz -t src.tar.acz
+.Sh SEE ALSO
+.Xr gzip 1 ,
+.Xr xz 1 ,
+.Xr zstd 1
+.Rs
+.%A G. G. Langdon, Jr.
+.%T An Introduction to Arithmetic Coding
+.%J IBM Journal of Research and Development
+.%V 28
+.%N 2
+.%P 135-149
+.%D 1984
+.Re
+.Sh STANDARDS
+The
+.Pa .acz
+format is specified in the documentation of
+.Pa acz/src/format.rs .
+The format may change before release 1.0.
+Each release reads only the format version it writes.
+.Sh AUTHORS
+.An Darrell Long

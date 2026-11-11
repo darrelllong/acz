@@ -4,96 +4,137 @@
 //
 // Dedicated to the memory of my colleague Glen G. Langdon
 
-//! A context-mixing bit predictor in the lineage of Mahoney's PAQ/lpaq
-//! (2002–2007), built entirely from integer arithmetic so that encoder and
-//! decoder agree bit-for-bit on every platform.
+//! A context-mixing bit predictor, in integer arithmetic so that encoder and
+//! decoder agree on every platform. The architecture is that of the PAQ
+//! compressors as their published descriptions give it (Mahoney 2005; Knoll and
+//! de Freitas 2012).
 //!
-//! Each byte is coded as 8 binary events, most significant bit first
-//! (Langdon's decomposition of a byte into binary decisions). For every bit:
+//! Each byte is coded as eight binary decisions, most significant bit first.
+//! For each bit:
 //!
-//! 1. *Context models* give probabilities. Orders 0 and 1 are directly
-//!    indexed counters. Seven hashed models (orders 2, 3, 4 and 6, the
-//!    current word, and two sparse contexts for fixed-width records) each
-//!    keep, per context, an adaptive probability and a bit history
-//!    (Mahoney 2005) mapped to a probability; both are mixer inputs. One
-//!    sparse context switches to the bytes one and two records above once
-//!    a record length is detected (after paq8). A *match model* predicts
-//!    the bit that followed the most recent occurrence of the last 6 bytes.
-//! 2. Two *logistic mixers* combine the inputs in the stretched domain,
-//!    `st(p) = ln(p / (1 - p))`: `p = squash(Σ wᵢ · st(pᵢ))`, with weights
-//!    trained online by gradient descent on coding cost. The first selects
-//!    its weights by match length and partial byte, the second by the
-//!    previous byte; their outputs are averaged in the stretched domain.
-//! 3. Two *adaptive probability maps* (APM/SSE), in order-0 and order-1
-//!    context, refine the result, which is blended as
-//!    `(p + apm₀ + 2·apm₁) / 4`.
+//! 1. The context models give probabilities. Orders 0 and 1 are counters
+//!    indexed directly. Seven hashed models (orders 2, 3, 4 and 6, the current
+//!    word, and two sparse contexts for binary data) each keep, for a context,
+//!    an adaptive probability and a bit history that a learned map turns into a
+//!    second probability. A match model predicts the bit that followed the most
+//!    recent occurrence of the last six bytes.
 //!
-//! **References.**
+//! 2. Two logistic mixers combine these in the stretched domain,
+//!    `st(p) = ln(p / (1 − p))`, as `p = squash(Σ wᵢ · st(pᵢ))`. Their weights
+//!    are trained by gradient descent on coding cost. One chooses its weights
+//!    by match length and partial byte, the other by the previous byte, and
+//!    their outputs are averaged in the stretched domain.
+//!
+//! 3. Two adaptive probability maps, in order-0 and order-1 context, correct
+//!    the result. The final probability is `(p + apm₀ + 2·apm₁) / 4`.
+//!
+//! # References
+//!
 //! M. V. Mahoney, *Adaptive Weighing of Context Models for Lossless Data
-//! Compression*, Florida Institute of Technology Technical Report
-//! CS-2005-16, 2005 (bit counts `n0`, `n1`; the earlier, linear mixer).
-//! M. V. Mahoney, *paq8l* (2007) and *lpaq1* (2007), compressor source
-//! code, <https://mattmahoney.net/dc/paq8l.zip> and
-//! <https://mattmahoney.net/dc/lpaq1.zip> (logistic mixing, adaptive
-//! probability maps, the stretch and squash tables, record detection).
+//! Compression*, Florida Institute of Technology Technical Report CS-2005-16,
+//! 2005 (bit histories; secondary estimation).
+//!
+//! B. Knoll and N. de Freitas, *A Machine Learning Perspective on Predictive
+//! Coding with PAQ8*, Proc. Data Compression Conference, 2012 (logistic mixing
+//! with weights chosen by context; adaptive probability maps).
 
-/// Probabilities in the stretch/squash domain are 12-bit (0..4096).
+/// The scale of a 12-bit probability.
 const PSCALE: i32 = 4096;
 
-/// `squash(d) = 4096 / (1 + e^{-d/256})`, by interpolation (from lpaq1).
-fn squash(d: i32) -> i32 {
-    const T: [i32; 33] = [
-        1, 2, 3, 6, 10, 16, 27, 45, 73, 120, 194, 310, 488, 747, 1101, 1546, 2047, 2549, 2994, 3348, 3607, 3785, 3901,
-        3975, 4022, 4050, 4068, 4079, 4085, 4089, 4092, 4093, 4094,
-    ];
-    if d > 2047 {
-        return 4095;
+/// A stretched probability lies within ±`STRETCH_MAX`.
+const STRETCH_MAX: i32 = 2047;
+
+/// [`squash`] of every `d` in `−2047..=2047`, at index `d + 2047`.
+static SQUASH: [u16; 4095] = squash_table();
+
+/// [`stretch`] of every 12-bit probability.
+static STRETCH: [i16; 4096] = stretch_table();
+
+/// Tabulates the logistic function `4096 / (1 + e^(−d/256))`, rounded to the
+/// nearest integer and kept within `1..=4095`.
+///
+/// The arithmetic is in integers, so the table is the same on every platform.
+/// `e^(1/256)` is summed from its power series in fixed point, and `e^(d/256)`
+/// follows by repeated multiplication. For a negative `d` the symmetry of the
+/// function gives `4096 − squash(−d)`.
+const fn squash_table() -> [u16; 4095] {
+    const FRAC: u32 = 56;
+    const ONE: u128 = 1 << FRAC;
+    let mut g = 0;
+    let mut term = ONE;
+    let mut k = 1;
+    while term > 0 {
+        g += term;
+        term /= 256 * k;
+        k += 1;
     }
-    if d < -2047 {
-        return 1;
+    let mut t = [0u16; 4095];
+    // e^(d/256), below 2^12 for every d here.
+    let mut e = ONE;
+    let mut d = 0;
+    while d <= 2047 {
+        let p = (4096 * e + (e + ONE) / 2) / (e + ONE);
+        let p = if p > 4095 { 4095 } else { p as u16 };
+        t[2047 + d] = p;
+        t[2047 - d] = 4096 - p;
+        e = (e * g) >> FRAC;
+        d += 1;
     }
-    let w = d & 127;
-    let i = ((d >> 7) + 16) as usize;
-    (T[i] * (128 - w) + T[i + 1] * w + 64) >> 7
+    t
 }
 
-/// Inverse of [`squash`]: `stretch(p) = 256 · ln(p / (4096 − p))` for a
-/// 12-bit `p`, clamped to ±2047.
-struct Stretch(Vec<i16>);
-
-impl Stretch {
-    /// Built by inverting `squash` rather than evaluating `ln`, so that
-    /// `squash(stretch(p))` is as close to `p` as the table allows and the
-    /// result is exact integer arithmetic on every platform: walk `x` up
-    /// from −2047, and give each `p` from the previous `squash` value up to
-    /// `squash(x)` the stretch `x`.
-    fn new() -> Self {
-        let mut t = vec![0i16; PSCALE as usize];
-        let mut pi = 0usize;
-        for x in -2047..=2047 {
-            let v = squash(x) as usize;
-            for slot in t.iter_mut().take(v + 1).skip(pi) {
-                *slot = x as i16;
+/// Tabulates the inverse of [`squash`]: for each `p`, the `d` whose squash is
+/// nearest `p`, and of several the one nearest zero. For `p` below a half the
+/// symmetry gives `−stretch(4096 − p)`.
+const fn stretch_table() -> [i16; 4096] {
+    let sq = squash_table();
+    let mut t = [0i16; 4096];
+    // The least d >= 0 whose squash is at least p.
+    let mut above = 0;
+    let mut p = 2048;
+    while p < 4096 {
+        while (sq[2047 + above] as usize) < p {
+            above += 1;
+        }
+        let mut best = above;
+        if (sq[2047 + above] as usize) > p {
+            // The value below p, at the least d that has it.
+            let mut below = above - 1;
+            while below > 0 && sq[2047 + below - 1] == sq[2047 + below] {
+                below -= 1;
             }
-            pi = pi.max(v + 1);
+            if p - (sq[2047 + below] as usize) <= (sq[2047 + above] as usize) - p {
+                best = below;
+            }
         }
-        for slot in t.iter_mut().skip(pi) {
-            *slot = 2047;
-        }
-        Stretch(t)
+        t[p] = best as i16;
+        t[4096 - p] = -(best as i16);
+        p += 1;
     }
-
-    #[inline]
-    fn get(&self, p12: i32) -> i32 {
-        i32::from(self.0[p12 as usize])
-    }
+    t[0] = -(STRETCH_MAX as i16);
+    t
 }
 
-/// Learning rate after `n` observations, `65536 / (n + 3.5)`. A counter that
-/// moves by `1/(n + 3.5)` of the error is close to the running frequency of
-/// what it has seen, so it learns fast when new and settles as evidence
-/// accumulates; the 3.5 keeps the first update from jumping all the way to
-/// 0 or 1 on a single observation.
+/// Returns `4096 / (1 + e^(−d/256))` as a 12-bit probability in `1..=4095`.
+#[inline]
+fn squash(d: i32) -> i32 {
+    i32::from(SQUASH[(d.clamp(-STRETCH_MAX, STRETCH_MAX) + STRETCH_MAX) as usize])
+}
+
+/// Returns the inverse of [`squash`], `256 · ln(p / (4096 − p))`, for a 12-bit
+/// probability. The mask changes nothing for such a value and spares the
+/// lookup a bounds check.
+#[inline]
+fn stretch(p12: i32) -> i32 {
+    debug_assert!((0..PSCALE).contains(&p12));
+    i32::from(STRETCH[p12 as usize & (PSCALE as usize - 1)])
+}
+
+/// The learning rate after `n` observations, `65536 / (n + 3.5)`. A counter
+/// that moves `1/(n + 3.5)` of the way toward each bit stays close to the
+/// frequency of what it has seen: it learns fast when new and settles as
+/// evidence accumulates. The 3.5 keeps one observation from taking it to 0 or
+/// 1.
 static RECIP: [u32; 1024] = recip_table();
 
 const fn recip_table() -> [u32; 1024] {
@@ -111,39 +152,39 @@ const fn recip_table() -> [u32; 1024] {
 /// its observation count in the low half. It starts at ½, never observed.
 const COUNTER_INIT: u32 = 0x8000_0000;
 
-/// A counter's probability, to the 12 bits the mixer uses.
+/// Returns a counter's probability in 12 bits.
 #[inline]
 fn counter_p(slot: u32) -> i32 {
     (slot >> 20) as i32
 }
 
-/// Move the counter toward the observed bit by `1/(n + 3.5)` of the error
-/// (see [`RECIP`]). Capping the count at `limit` keeps the step from
-/// shrinking forever, so the counter can still follow data that changes:
-/// a small limit tracks recent statistics, a large one averages longer.
+/// Moves a counter `1/(n + 3.5)` of the way toward `bit` (see [`RECIP`]). The
+/// count stops at `limit`, so the step never shrinks to nothing and the counter
+/// can follow data that changes. A small limit tracks recent statistics; a
+/// large one averages longer.
 #[inline]
 fn counter_update(slot: &mut u32, bit: bool, limit: u32) {
     let p = i64::from(*slot >> 16);
     let n = *slot & 0xFFFF;
     let target = if bit { 65535 } else { 0 };
-    let np = p + (((target - p) * i64::from(RECIP[n as usize])) >> 16);
+    // No limit reaches 1024, so the mask changes nothing. It spares the
+    // lookup a bounds check.
+    let np = p + (((target - p) * i64::from(RECIP[n as usize & 1023])) >> 16);
     let nn = if n < limit { n + 1 } else { n };
     *slot = ((np as u32) << 16) | nn;
 }
 
-/// Cap on each bit-history count.
+/// The most a bit-history count can reach.
 const HIST_CAP: u32 = 63;
 const _: () = assert!(2 * HIST_CAP < 1024, "n0 + n1 must index the reciprocal table");
 
-// A slot of a hashed model holds two things about its context: a 16-bit
-// adaptive probability (high half) and a *bit history*, the counts `n0`
-// (bits 8..16) and `n1` (bits 0..8) of zeros and ones seen (Mahoney 2005,
-// §3). A probability alone cannot tell "seen once" from "seen a thousand
-// times with the same result", and the mixer needs to know the difference;
-// the bit history says how much evidence there is and how consistent it
-// is, and a learned map (`HistMap`) turns it into a second prediction.
+// A slot of a hashed model holds a 16-bit adaptive probability in its high
+// half and a bit history in its low half: the counts `n0` (bits 8..16) and
+// `n1` (bits 0..8) of zeros and ones seen (Mahoney 2005, §3). A probability
+// alone does not say how much evidence stands behind it. The history does,
+// and a learned map (`HistMap`) turns it into a second prediction.
 
-/// Index of a slot's bit history `(n0, n1)` in its model's `HistMap`.
+/// Returns the index of a slot's bit history in a map of [`HIST_STATES`].
 #[inline]
 fn hist_index(slot: u32) -> usize {
     let n0 = (slot >> 8) & 0xFF;
@@ -151,12 +192,11 @@ fn hist_index(slot: u32) -> usize {
     (n0 * (HIST_CAP + 1) + n1) as usize
 }
 
-/// Learn `bit` in a slot: move its probability as a counter does, using the
-/// evidence so far (`n0 + n1`) as the count; then update the bit history.
-/// The history is *semi-stationary*: a 1 adds to `n1` and, if `n0 > 2`,
-/// cuts `n0` to `n0 / 2 + 1` (and the mirror image for a 0). Old evidence
-/// against the latest outcome is discounted but not forgotten, so a
-/// context that changes its behavior is believed again within a few bits.
+/// Learns `bit` in a slot. The probability moves as a counter's does, with
+/// `n0 + n1` as the count. The history is semi-stationary (Mahoney 2005): a 1
+/// adds to `n1` and, if `n0 > 2`, cuts `n0` to `n0 / 2 + 1`, and a 0 does the
+/// mirror image. Evidence against the latest outcome is discounted but kept, so
+/// a context that changes is believed again within a few bits.
 #[inline]
 fn hist_update(slot: &mut u32, bit: bool) {
     let p = i64::from(*slot >> 16);
@@ -179,25 +219,29 @@ fn hist_update(slot: &mut u32, bit: bool) {
     *slot = ((np as u32) << 16) | (n0 << 8) | n1;
 }
 
-/// What a bit history `(n0, n1)` actually predicts, learned online. Each
-/// model has its own map, because "three ones, no zeros" means something
-/// different in an order-2 context than in an order-6 one.
+/// What each bit history predicts, learned as coding goes. Every model has its
+/// own map, because three ones and no zeros mean one thing in an order-2
+/// context and another in an order-6 context.
 struct HistMap {
+    /// One map of [`HIST_STATES`] counters per model, one after another.
     t: Vec<u32>,
 }
 
+/// The number of bit histories `(n0, n1)`.
+const HIST_STATES: usize = ((HIST_CAP + 1) * (HIST_CAP + 1)) as usize;
+
 impl HistMap {
-    fn new() -> Self {
+    fn new(models: usize) -> Self {
         let k = HIST_CAP + 1;
-        let mut t = vec![0u32; (k * k) as usize];
+        let mut one = vec![0u32; HIST_STATES];
         for n0 in 0..k {
             for n1 in 0..k {
                 // Prior (n1 + ½) / (n0 + n1 + 1), as a 16-bit probability.
                 let p = ((2 * n1 + 1) << 16) / (2 * (n0 + n1) + 2);
-                t[(n0 * k + n1) as usize] = p.min(65535) << 16;
+                one[(n0 * k + n1) as usize] = p.min(65535) << 16;
             }
         }
-        HistMap { t }
+        HistMap { t: one.repeat(models) }
     }
 
     #[inline]
@@ -211,7 +255,7 @@ impl HistMap {
     }
 }
 
-/// A table of counters indexed directly (no hashing).
+/// A table of counters indexed directly.
 struct Counters {
     t: Vec<u32>,
     limit: u32,
@@ -233,27 +277,29 @@ impl Counters {
     }
 }
 
-/// One cache line of counters for one hashed context and one nibble: slot
-/// 0 is metadata, and slots 1..=15 are the 15 nodes of the binary tree over
-/// the nibble's four bits (the node is the bits seen so far, with a leading
-/// 1). The context is looked up once per nibble, not once per bit, and the
-/// counters for all four bits share one line, so they cost at most one
-/// memory access between them.
+/// One cache line of slots for one hashed context and one nibble. Slot 0 is
+/// metadata. Slots 1 to 15 are the nodes of the binary tree over the nibble's
+/// four bits; a node is the bits seen so far behind a leading 1. A context is
+/// looked up once for each nibble, and the slots for its four bits share the
+/// line.
 #[repr(align(64))]
 #[derive(Clone, Copy)]
 struct Bucket([u32; 16]);
 
-/// A hashed table of nibble buckets.
+/// The hashed tables of nibble buckets of all the models, one after another.
 struct HashedCounters {
     t: Vec<Bucket>,
+    /// log2 of the buckets per model.
+    bits: u32,
 }
 
-/// Slot 0 of a bucket: `use count (16 bits) | occupied (1 bit) | check (15
-/// bits)`. An empty bucket is all zeros: it matches no tag (every tag has
-/// the occupied bit set) and, with a use count of 0, is the first victim.
+/// Slot 0 of a bucket holds a use count (16 bits), an occupied bit and a check
+/// (15 bits). An empty bucket has slot 0 zero. It matches no tag, since every
+/// tag has the occupied bit, and with a use count of 0 it is the first to be
+/// replaced.
 const OCCUPIED: u32 = 1 << 15;
 
-/// A fresh bucket: empty metadata, all counters at their initial value.
+/// Returns an empty bucket: slot 0 zero and every counter at its initial value.
 const fn empty_bucket() -> Bucket {
     let mut b = [COUNTER_INIT; 16];
     b[0] = 0;
@@ -261,31 +307,28 @@ const fn empty_bucket() -> Bucket {
 }
 
 impl HashedCounters {
-    fn new(buckets_log2: u32) -> Self {
-        HashedCounters { t: vec![empty_bucket(); 1 << buckets_log2] }
+    fn new(models: usize, buckets_log2: u32) -> Self {
+        HashedCounters { t: vec![empty_bucket(); models << buckets_log2], bits: buckets_log2 }
     }
 
-    /// Tag for hash `h`: a 15-bit check drawn from a remix of `h` (so it is
-    /// independent of the index bits) plus the occupied bit.
+    /// Returns the tag for hash `h`: the occupied bit and a 15-bit check taken
+    /// from a remix of `h`, so that it does not depend on the index bits.
     #[inline]
     fn tag(h: u32) -> u32 {
         ((h.wrapping_mul(0x9E37_79B1) >> 17) & (OCCUPIED - 1)) | OCCUPIED
     }
 
-    /// Find the bucket for hash `h`, or claim one for it.
+    /// Returns the bucket of `model` for hash `h`, claiming one if there is
+    /// none.
     ///
-    /// The index (the top bits of `h`) chooses a pair of adjacent buckets,
-    /// and the tag tells which, if either, holds this context. A table of
-    /// fixed size must forget something when it is full, so on a miss the
-    /// bucket used less is reset and taken (an empty one, with use count 0,
-    /// first): a new context starts from neutral counters instead of
-    /// inheriting a stranger's. The other bucket's use count is halved, so a
-    /// context that was busy once but is no longer needed loses its place
-    /// over time instead of holding it forever.
+    /// The top bits of `h` choose a pair of adjacent buckets, and the tag tells
+    /// which of them, if either, holds this context. On a miss the bucket used
+    /// less is reset and taken, so a new context starts from neutral counters.
+    /// The other bucket's use count is halved, so a context that was busy once
+    /// loses its place in time.
     #[inline]
-    fn find(&mut self, h: u32, shift: u32) -> usize {
-        let mask = self.t.len() - 1;
-        let i0 = (h >> shift) as usize & mask;
+    fn find(&mut self, model: usize, h: u32) -> usize {
+        let i0 = (model << self.bits) | (h >> (32 - self.bits)) as usize;
         let i1 = i0 ^ 1;
         let tag = Self::tag(h);
         for i in [i0, i1] {
@@ -308,76 +351,76 @@ impl HashedCounters {
     }
 }
 
-/// APM learning rate: each update moves a bucket 2^-7 of the way.
-const APM_RATE: u32 = 7;
+/// log2 of the spacing of an [`Apm`]'s knots in the stretched domain.
+const APM_SHIFT: u32 = 8;
+/// The knots of one curve, from −2048 to 2048.
+const APM_KNOTS: usize = (PSCALE as usize >> APM_SHIFT) + 1;
+/// A knot with the whole interpolation weight moves `2^-APM_RATE` of the way
+/// toward the bit.
+const APM_RATE: u32 = 6;
 
-/// Adaptive probability map (secondary symbol estimation): a learned
-/// correction of the mixer's output. For each small context it keeps a
-/// curve from input probability to output probability, sampled at 33
-/// points evenly spaced in the stretched domain and starting as the
-/// identity. The output interpolates between the two points either side of
-/// the input; learning moves the nearer one toward the observed bit. It
-/// catches what the mixer gets systematically wrong in that context, such
-/// as being too confident or not confident enough.
+/// An adaptive probability map: a learned correction of the mixer's output
+/// (secondary estimation; Mahoney 2005, §4.2; Knoll and de Freitas 2012,
+/// §3.1). For each context it keeps a curve from input probability to output
+/// probability. The curve is a row of knots evenly spaced in the stretched
+/// domain, which puts them closer together near 0 and 1, and it starts as the
+/// identity. The output interpolates between the two knots around the input.
+/// After the bit is coded each of those two knots moves toward it, in
+/// proportion to its share of the interpolation.
 struct Apm {
     t: Vec<u16>,
-    idx: usize,
-    rate: u32,
+    /// The lower knot of the last prediction.
+    lo: usize,
+    /// The weight of the upper knot in the last prediction, of `2^APM_SHIFT`.
+    w: i32,
 }
 
 impl Apm {
-    fn new(contexts: usize, rate: u32) -> Self {
-        let mut t = vec![0u16; contexts * 33];
-        for c in 0..contexts {
-            for j in 0..33 {
-                t[c * 33 + j] = (squash((j as i32 - 16) * 128) * 16) as u16;
-            }
-        }
-        Apm { t, idx: 0, rate }
+    fn new(contexts: usize) -> Self {
+        let curve: Vec<u16> = (0..APM_KNOTS).map(|j| (squash(((j as i32) << APM_SHIFT) - 2048) * 16) as u16).collect();
+        Apm { t: curve.repeat(contexts), lo: 0, w: 0 }
     }
 
-    /// The corrected probability for an input whose stretch is `st`, in
-    /// context `cx`; remembers which point to train.
+    /// Returns the corrected probability for an input whose stretch is `st`, in
+    /// context `cx`, and remembers the knots to train.
     #[inline]
     fn p(&mut self, st: i32, cx: usize) -> i32 {
-        // Place st on the 32 intervals between the 33 points: lo is the
-        // interval, w (0..4096) the position within it.
-        let s = (st + 2048) * 32;
-        let lo = (s >> 12) as usize;
-        let w = s & 4095;
-        let base = cx * 33 + lo;
-        self.idx = base + usize::from(w >= 2048);
-        let a = i32::from(self.t[base]);
-        let b = i32::from(self.t[base + 1]);
-        ((a * (4096 - w) + b * w) >> 16).clamp(1, 4095)
+        let s = st + 2048;
+        let full = 1 << APM_SHIFT;
+        self.w = s & (full - 1);
+        self.lo = cx * APM_KNOTS + (s >> APM_SHIFT) as usize;
+        let a = i32::from(self.t[self.lo]);
+        let b = i32::from(self.t[self.lo + 1]);
+        ((a * (full - self.w) + b * self.w) >> (APM_SHIFT + 4)).clamp(1, 4095)
     }
 
     #[inline]
     fn update(&mut self, bit: bool) {
-        let g = if bit { 65535i32 } else { 0 };
-        let v = i32::from(self.t[self.idx]);
-        self.t[self.idx] = (v + ((g - v) >> self.rate)) as u16;
+        let g = if bit { 65535 } else { 0 };
+        let full = 1 << APM_SHIFT;
+        let by = APM_SHIFT + APM_RATE;
+        for (k, w) in [(self.lo, full - self.w), (self.lo + 1, self.w)] {
+            let v = i32::from(self.t[k]);
+            self.t[k] = (v + (((g - v) * w + (1 << (by - 1))) >> by)) as u16;
+        }
     }
 }
 
-/// Mixer inputs: order 0, order 1, two per hashed model (adaptive
-/// probability and bit-history map), match, bias.
+/// The mixer inputs: order 0, order 1, two for each hashed model (its
+/// probability and its bit history's), the match model, and a bias.
 const N_INPUTS: usize = 2 * N_HASHED + 4;
 
 const _: () = assert!(N_INPUTS < 32, "mixer dot product must fit in i32");
 
-/// Logistic mixing (paq8l, lpaq1): the inputs are predictions in the
-/// stretched domain, `xᵢ = st(pᵢ)`, and the output is `squash(Σ wᵢ xᵢ)`. The
-/// weights are learned by gradient descent on coding cost: after a bit `y`,
-/// `wᵢ += η · xᵢ · (y − p)`, the gradient of `−log p(y)` for the ideal
-/// logistic model (here `squash`, `stretch` and the update are integer
-/// approximations of it). A prediction that was confident and right gains
-/// weight, one that was confident and wrong loses it. The mixer keeps several sets
-/// of weights and a small context chooses which set to use and train, so
-/// that it can trust different models in different situations.
+/// A logistic mixer (Knoll and de Freitas 2012, §3.2). The inputs are
+/// predictions in the stretched domain, `xᵢ = st(pᵢ)`, and the output is
+/// `squash(Σ wᵢ xᵢ)`. The weights follow the gradient of coding cost: after a
+/// bit `y`, `wᵢ += η · xᵢ · (y − p)`. An input that was confident and right
+/// gains weight, and one that was confident and wrong loses it. The mixer holds
+/// several sets of weights, and a small context chooses the set to use and
+/// train, so different models can be trusted in different situations.
 struct Mixer {
     w: Vec<i32>,
-    x: [i32; N_INPUTS],
     /// Offset of the selected weight set in `w`.
     base: usize,
     pr: i32,
@@ -385,41 +428,42 @@ struct Mixer {
 
 impl Mixer {
     fn new(sets: usize) -> Self {
-        Mixer { w: vec![(1 << 16) / 8; sets * N_INPUTS], x: [0; N_INPUTS], base: 0, pr: 2048 }
+        Mixer { w: vec![(1 << 16) / 8; sets * N_INPUTS], base: 0, pr: 2048 }
     }
 
-    /// Mix the inputs in `x` with weight set `set`.
+    /// Mixes the inputs `x` with weight set `set`.
     #[inline]
-    fn mix(&mut self, set: usize) -> i32 {
+    fn mix(&mut self, x: &[i32; N_INPUTS], set: usize) -> i32 {
         self.base = set * N_INPUTS;
         let w = &self.w[self.base..self.base + N_INPUTS];
         // |x| < 2^11 and |w >> 8| <= 2^15, so each product is below 2^26
         // and the sum of N_INPUTS (< 32) products fits in an i32.
-        let dot: i32 = self.x.iter().zip(w).map(|(&x, &w)| x * (w >> 8)).sum();
+        let dot: i32 = x.iter().zip(w).map(|(&x, &w)| x * (w >> 8)).sum();
         let d = (dot >> 8).clamp(-2047, 2047);
         self.pr = squash(d);
         self.pr
     }
 
-    /// Train the weight set last used, after the coded `bit`.
+    /// Trains the weight set last used, on the inputs `x` it mixed and the
+    /// coded `bit`.
     #[inline]
-    fn update(&mut self, bit: bool) {
+    fn update(&mut self, x: &[i32; N_INPUTS], bit: bool) {
         // The error y − p in 12-bit units; the shift by 10 below is the
         // learning rate.
         let err = ((i32::from(bit) << 12) - self.pr) * 2;
         let w = &mut self.w[self.base..self.base + N_INPUTS];
-        for (wi, &xi) in w.iter_mut().zip(&self.x) {
+        for (wi, &xi) in w.iter_mut().zip(x) {
             *wi = (*wi + ((xi * err + (1 << 9)) >> 10)).clamp(-(1 << 23), 1 << 23);
         }
     }
 }
 
-/// The match model: if the last `MATCH_MINLEN` bytes occurred before, the
+/// The match model. If the last [`MATCH_MINLEN`] bytes occurred before, the
 /// byte that followed them then is a good guess for the next byte now. It
-/// reaches back over the whole block, far beyond any context order, which
-/// is what catches long repeats. Its prediction is a counter chosen by the
-/// match length and the expected bit, so the mixer learns how much a match
-/// of each length is worth.
+/// reaches back over the whole block, far beyond any context order, and so
+/// catches long repeats. Its prediction is a counter chosen by the match length
+/// and the expected bit, which lets the mixer learn what a match of each length
+/// is worth.
 struct MatchModel {
     buf: Vec<u8>,
     pos: usize,
@@ -434,19 +478,19 @@ struct MatchModel {
 }
 
 const MATCH_MINLEN: usize = 6;
-/// Match-table size relative to the history buffer (log2 ratio).
+/// The match table has one entry for every `2^MATCH_TABLE_SHIFT` bytes of
+/// history.
 const MATCH_TABLE_SHIFT: u32 = 2;
 
-/// log2 sizes of the match history (holding a whole block of `len` bytes)
-/// and of its hash table.
+/// Returns the log2 sizes of the match history, which holds a whole block of
+/// `len` bytes, and of its hash table.
 fn match_bits(len: usize) -> (u32, u32) {
     let buf_bits = len.max(1 << 16).next_power_of_two().trailing_zeros();
     (buf_bits, (buf_bits - MATCH_TABLE_SHIFT).clamp(16, 24))
 }
 
 impl MatchModel {
-    /// History sized to hold `len` bytes (a whole block), so a match can
-    /// reach back to the start of the block.
+    /// Returns a match model whose history holds a block of `len` bytes.
     fn new(len: usize) -> Self {
         let (buf_bits, table_bits) = match_bits(len);
         MatchModel {
@@ -466,15 +510,14 @@ impl MatchModel {
         self.buf.len() - 1
     }
 
-    /// Advance by one byte. `h` is a hash of the last `MATCH_MINLEN` bytes.
+    /// Advances by one byte. `h` is a hash of the last [`MATCH_MINLEN`] bytes.
     ///
-    /// A current match that predicted this byte grows by one; otherwise it
-    /// ends. Without a match, the table gives the last position after the
-    /// same hash, and the match is taken if the bytes before it really
-    /// agree for at least `MATCH_MINLEN` (a hash can collide). Its length
-    /// is counted backward, up to 32. The table then records the current
-    /// position under `h`, so the most recent occurrence is always the one
-    /// found.
+    /// A match that predicted this byte grows by one; any other ends. With no
+    /// match, the table gives the last position that followed the same hash,
+    /// and that match is taken if at least [`MATCH_MINLEN`] bytes before it
+    /// agree, since a hash can collide. Its length is counted backward, up to
+    /// 32. The table then records the current position under `h`, so the most
+    /// recent occurrence is the one found.
     fn byte_update(&mut self, byte: u8, h: u32) {
         let m = self.mask();
         self.buf[self.pos & m] = byte;
@@ -507,15 +550,16 @@ impl MatchModel {
         }
     }
 
-    /// The match model's input to the mixer for the next bit; `c0` is the
-    /// partial byte with a leading 1, `nbits` the bits of it known.
+    /// Returns the match model's input to the mixer for the next bit. `c0` is
+    /// the partial byte behind a leading 1, and `nbits` the number of its bits
+    /// known.
     ///
-    /// While the bits so far agree with the predicted byte, the prediction
-    /// is the next bit of that byte, with the confidence learned for
-    /// matches of this length; once a bit disagrees the match is over (for
-    /// the rest of the byte too) and the input is 0, no opinion.
+    /// While the bits so far agree with the predicted byte, the input is the
+    /// next bit of that byte, with the confidence learned for matches of this
+    /// length. Once a bit disagrees the match is over and the input is 0, which
+    /// is no opinion.
     #[inline]
-    fn predict(&mut self, c0: u32, nbits: u32, st: &Stretch) -> i32 {
+    fn predict(&mut self, c0: u32, nbits: u32) -> i32 {
         if self.len > 0 {
             let pc = (u32::from(self.predicted) | 0x100) >> (8 - nbits);
             if pc == c0 {
@@ -524,7 +568,7 @@ impl MatchModel {
                 // bytes, up to 31 classes.
                 let l = self.len.min(15) + if self.len > 15 { (self.len - 15).min(48) / 3 } else { 0 };
                 self.ctx = (l.min(31) << 1 | usize::from(expected)) + 2;
-                return st.get(self.counters.p(self.ctx));
+                return stretch(self.counters.p(self.ctx));
             }
             self.len = 0;
         }
@@ -539,7 +583,8 @@ impl MatchModel {
         }
     }
 
-    /// One of four match-length classes selecting the mixer's weight set.
+    /// Returns one of four classes of match length, which selects the mixer's
+    /// weight set.
     fn len_class(&self) -> usize {
         match self.len {
             0 => 0,
@@ -550,7 +595,252 @@ impl MatchModel {
     }
 }
 
-/// Combine two words into a well-mixed 32-bit hash.
+/// Gaps kept as possible record lengths.
+const GAPS: usize = 8;
+/// Record lengths scored at once, besides the default.
+const SCORED: usize = 3;
+/// The record length until one is found: a machine word.
+const DEFAULT_RECORD: usize = 4;
+/// The shortest record length sought. Shorter distances are within reach of
+/// the other contexts.
+const MIN_RECORD: usize = 7;
+/// Record lengths are below this.
+const MAX_RECORD: usize = 1 << 16;
+/// The votes at which a gap gets a model.
+const PROMOTE: u32 = 128;
+/// The evidence that replaces the record length in use, in 1/256 bit.
+const RECORD_EVIDENCE: i32 = 4096 << 8;
+
+/// Returns `log₂ x` in 1/256 bit for `x >= 1`, exact at powers of two and
+/// linear between them, which is within 0.09 bit.
+fn log2_q8(x: u32) -> i32 {
+    let e = 31 - x.leading_zeros();
+    ((e << 8) | ((x << (31 - e)) >> 23) & 0xFF) as i32
+}
+
+/// An adaptive model of a byte given the byte some distance back: counts of
+/// each byte after each context byte.
+struct Conditional {
+    counts: Vec<u8>,
+    rows: [u16; 256],
+    /// A row is current if its stamp equals `epoch`. Clearing the model only
+    /// starts a new epoch, and a row is emptied when it is next used, since
+    /// candidates come and go far more often than their rows are touched.
+    stamps: [u32; 256],
+    epoch: u32,
+}
+
+impl Conditional {
+    fn new() -> Self {
+        Conditional { counts: vec![0; 1 << 16], rows: [0; 256], stamps: [0; 256], epoch: 0 }
+    }
+
+    fn clear(&mut self) {
+        self.epoch = self.epoch.wrapping_add(1);
+        if self.epoch == 0 {
+            self.stamps = [u32::MAX; 256];
+        }
+    }
+
+    /// Returns the cost of `byte` after context byte `y`, in 1/256 bit, and
+    /// then counts it. The estimate is `(n + 1/16) / (N + 16)` for `n` of the
+    /// `N` bytes seen after `y`.
+    fn cost(&mut self, y: u8, byte: u8) -> i32 {
+        let row = &mut self.counts[usize::from(y) << 8..][..256];
+        let total = &mut self.rows[usize::from(y)];
+        if self.stamps[usize::from(y)] != self.epoch {
+            self.stamps[usize::from(y)] = self.epoch;
+            row.fill(0);
+            *total = 0;
+        }
+        let n = row[usize::from(byte)];
+        let cost = log2_q8(16 * u32::from(*total) + 256) - log2_q8(16 * u32::from(n) + 1);
+        if n == u8::MAX {
+            *total = 0;
+            for c in row.iter_mut() {
+                *c = c.div_ceil(2);
+                *total += u16::from(*c);
+            }
+        }
+        row[usize::from(byte)] += 1;
+        *total += 1;
+        cost
+    }
+}
+
+/// A gap that may be the record length.
+#[derive(Clone, Copy, Default)]
+struct Gap {
+    len: usize,
+    /// Its weight among the gaps seen.
+    votes: u32,
+    /// The model that scores it, if it has one.
+    model: Option<usize>,
+    /// How far it has run ahead of the length in use, in 1/256 bit.
+    lead: i32,
+}
+
+/// Finds the length of fixed-length records.
+///
+/// A record length is worth having if the byte one record back tells more
+/// about the next byte than the byte at the default distance does. Each
+/// candidate length gets an adaptive model of a byte given the byte that far
+/// back, and the model's running code length is the measure, as in Rissanen's
+/// predictive form of the minimum description length principle (1984). The
+/// difference in code length between a candidate and the length in use is
+/// accumulated by Page's cumulative-sum test (1954), and the candidate
+/// replaces the length in use when it has run [`RECORD_EVIDENCE`] ahead.
+///
+/// The candidates are the commonest gaps between a byte and the previous byte
+/// of the same value, kept by the frequent-items algorithm of Misra and Gries
+/// (1982). A gap is weighed by the information in the byte, so a run of zeros
+/// proposes nothing.
+struct Records {
+    /// One more than the last position of each byte value, or 0.
+    last: [u32; 256],
+    /// How often each byte value has occurred, halved now and then.
+    freq: [u16; 256],
+    total: u32,
+    gaps: [Gap; GAPS],
+    /// The model of the default length, then those of the scored gaps.
+    models: Vec<Conditional>,
+    /// The gap in use, or `GAPS` for the default length.
+    used: usize,
+    /// How far the gap in use has run behind the default length.
+    behind: i32,
+    /// Models not scoring any gap.
+    free: usize,
+}
+
+impl Records {
+    fn new() -> Self {
+        Records {
+            last: [0; 256],
+            freq: [0; 256],
+            total: 0,
+            gaps: [Gap::default(); GAPS],
+            models: (0..=SCORED).map(|_| Conditional::new()).collect(),
+            used: GAPS,
+            behind: 0,
+            free: SCORED,
+        }
+    }
+
+    /// Returns the record length in use.
+    fn len(&self) -> usize {
+        if self.used < GAPS {
+            self.gaps[self.used].len
+        } else {
+            DEFAULT_RECORD
+        }
+    }
+
+    /// Takes in `byte`, the last of the `pos` bytes in `history`.
+    fn update(&mut self, byte: u8, history: &[u8], pos: usize) {
+        let b = usize::from(byte);
+        let mask = history.len() - 1;
+        let back = |len: usize| if len < pos { history[(pos - 1 - len) & mask] } else { 0 };
+
+        // What the byte costs after the byte one record back, for the default
+        // length and for each scored gap.
+        let default = self.models[0].cost(back(DEFAULT_RECORD), byte);
+        let mut costs = [0; GAPS];
+        for (k, g) in self.gaps.iter().enumerate() {
+            if let Some(m) = g.model {
+                costs[k] = self.models[m].cost(back(g.len), byte);
+            }
+        }
+        let held = if self.used < GAPS { costs[self.used] } else { default };
+        if self.used < GAPS {
+            self.behind = (self.behind + held - default).clamp(0, 1 << 28);
+        }
+        for (k, g) in self.gaps.iter_mut().enumerate() {
+            if g.model.is_some() && k != self.used {
+                g.lead = (g.lead + held - costs[k]).clamp(0, 1 << 28);
+            }
+        }
+
+        // The gap to the previous byte of this value votes for a length, with
+        // the weight of the information in the byte, in whole bits.
+        let bits = (self.total + 1).leading_zeros().abs_diff((u32::from(self.freq[b]) + 1).leading_zeros());
+        let gap = pos - self.last[b] as usize;
+        let seen = self.last[b] != 0;
+        self.last[b] = pos as u32;
+        if seen && (MIN_RECORD..MAX_RECORD).contains(&gap) && bits > 0 {
+            self.vote(gap, bits);
+        }
+        self.freq[b] += 1;
+        self.total += 1;
+        if self.total == 1 << 14 {
+            self.total = 0;
+            for f in &mut self.freq {
+                *f = f.div_ceil(2);
+                self.total += u32::from(*f);
+            }
+        }
+
+        let mut best = GAPS;
+        for (k, g) in self.gaps.iter().enumerate() {
+            if g.model.is_some() && k != self.used && (best == GAPS || g.lead > self.gaps[best].lead) {
+                best = k;
+            }
+        }
+        if best < GAPS && self.gaps[best].lead >= RECORD_EVIDENCE {
+            self.used = best;
+        } else if self.used < GAPS && self.behind >= RECORD_EVIDENCE {
+            self.used = GAPS;
+        } else {
+            return;
+        }
+        self.behind = 0;
+        for g in &mut self.gaps {
+            g.lead = 0;
+        }
+    }
+
+    /// Counts `bits` for `gap` among the gaps kept, and gives a free model to
+    /// the strongest gap without one.
+    fn vote(&mut self, gap: usize, bits: u32) {
+        if let Some(g) = self.gaps.iter_mut().find(|g| g.len == gap) {
+            g.votes = (g.votes + bits).min(1 << 16);
+        } else if let Some(g) = self.gaps.iter_mut().find(|g| g.votes == 0 && g.model.is_none()) {
+            *g = Gap { len: gap, votes: bits, model: None, lead: 0 };
+        } else {
+            for (k, g) in self.gaps.iter_mut().enumerate() {
+                g.votes = g.votes.saturating_sub(bits);
+                // A scored gap that has lost its votes and leads nothing
+                // gives up its model.
+                if g.votes == 0 && g.lead == 0 && k != self.used && g.model.take().is_some() {
+                    self.free += 1;
+                }
+            }
+        }
+        if self.free == 0 {
+            return;
+        }
+        let mut taken = [false; SCORED + 1];
+        for g in &self.gaps {
+            if let Some(m) = g.model {
+                taken[m] = true;
+            }
+        }
+        let Some(free) = (1..=SCORED).find(|&m| !taken[m]) else { return };
+        let mut strongest = GAPS;
+        for (k, g) in self.gaps.iter().enumerate() {
+            if g.model.is_none() && g.votes >= PROMOTE && (strongest == GAPS || g.votes > self.gaps[strongest].votes) {
+                strongest = k;
+            }
+        }
+        if strongest < GAPS {
+            self.models[free].clear();
+            self.gaps[strongest].model = Some(free);
+            self.gaps[strongest].lead = 0;
+            self.free -= 1;
+        }
+    }
+}
+
+/// Returns a 32-bit hash of two words.
 #[inline]
 fn hash(a: u32, b: u32) -> u32 {
     let mut h = a.wrapping_mul(0x9E37_79B1) ^ b.wrapping_mul(0x85EB_CA6B).rotate_left(13);
@@ -559,24 +849,24 @@ fn hash(a: u32, b: u32) -> u32 {
     h ^ (h >> 13)
 }
 
-/// log2 of the number of 64-byte buckets per hashed model (16 MiB each).
+/// log2 of the buckets of a hashed model, which make 16 MiB.
 const BUCKET_BITS: u32 = 18;
-/// Number of hashed context models (orders 2, 3, 4, 6, word, two sparse).
+/// The hashed models: orders 2, 3, 4 and 6, the word, and two sparse contexts.
 const N_HASHED: usize = 7;
 
-/// The full context-mixing predictor.
+/// The context-mixing predictor.
 pub struct Cm {
-    stretch: Stretch,
-    /// One bit-history map per hashed model.
-    hmaps: Vec<HistMap>,
-    /// Bit-history index used by each hashed model for the current bit.
+    hmaps: HistMap,
+    /// Where in `hmaps` each hashed model's bit history is for this bit.
     hidx: [usize; N_HASHED],
     o0: Counters,
     o1: Counters,
-    hashed: Vec<HashedCounters>,
+    hashed: HashedCounters,
     /// Bucket of each hashed model for the current nibble.
     bucket: [usize; N_HASHED],
-    /// Per-byte context hashes of the hashed models.
+    /// The mixers' inputs for the current bit.
+    x: [i32; N_INPUTS],
+    /// The context hash of each hashed model for the current byte.
     hctx: [u32; N_HASHED],
     /// Order-1 slot for the current bit (order 0 is indexed by `c0`).
     o1_idx: usize,
@@ -585,8 +875,7 @@ pub struct Cm {
     node: usize,
     mm: MatchModel,
     mixer: Mixer,
-    /// Second mixer, weights selected by the previous byte (PAQ5-style
-    /// multiple mixers); the two are averaged in the stretched domain.
+    /// The second mixer, with weights chosen by the previous byte.
     mixer2: Mixer,
     apm1: Apm,
     apm2: Apm,
@@ -598,61 +887,49 @@ pub struct Cm {
     /// Bytes 5..8 back.
     c8: u32,
     word: u32,
-    /// Record-length detector (paq8 style): last positions of each byte.
-    cpos: Box<[[usize; 4]; 256]>,
-    rlen: usize,
-    rlen1: usize,
-    rcount1: u32,
-    rlen2: usize,
-    rcount2: u32,
+    records: Records,
     pr: i32,
 }
 
 impl Cm {
-    /// Upper bound, in bytes, on the memory [`Cm::new`] allocates for a
+    /// Returns an upper bound, in bytes, on what [`Cm::new`] allocates for a
     /// block of `len` bytes.
     pub fn memory(len: usize) -> u64 {
         let (buf_bits, table_bits) = match_bits(len);
         let hashed = N_HASHED as u64 * (64u64 << BUCKET_BITS);
         let direct = 4 * (256 + (1 << 16)) as u64;
-        let apms = 2 * 33 * (256 + (1 << 16)) as u64;
+        let apms = (2 * APM_KNOTS * (256 + (1 << 16))) as u64;
         let mixer = 4 * 5 * 256 * N_INPUTS as u64;
-        let tables = 2 * PSCALE as u64 + 4 * 1024 + N_HASHED as u64 * 4 * 64 * 64;
+        let tables = N_HASHED as u64 * 4 * 64 * 64;
         let matcher = (1u64 << buf_bits) + (4u64 << table_bits) + 4 * 128;
-        let record = (256 * 4 * std::mem::size_of::<usize>()) as u64;
-        hashed + direct + apms + mixer + tables + matcher + record + (1 << 16)
+        let records = ((SCORED + 1) << 16) as u64;
+        hashed + direct + apms + mixer + tables + matcher + records + (1 << 16)
     }
 
-    /// Fresh predictor for a block of up to `len` bytes (see
-    /// [`Cm::memory`] for its size).
+    /// Returns a predictor for a block of up to `len` bytes.
     pub fn new(len: usize) -> Self {
         let mut cm = Cm {
-            stretch: Stretch::new(),
-            hmaps: (0..N_HASHED).map(|_| HistMap::new()).collect(),
+            hmaps: HistMap::new(N_HASHED),
             hidx: [0; N_HASHED],
             o0: Counters::new(256, 60),
             o1: Counters::new(1 << 16, 120),
-            hashed: (0..N_HASHED).map(|_| HashedCounters::new(BUCKET_BITS)).collect(),
+            hashed: HashedCounters::new(N_HASHED, BUCKET_BITS),
             bucket: [0; N_HASHED],
+            x: [0; N_INPUTS],
             hctx: [0; N_HASHED],
             o1_idx: 0,
             node: 0,
             mm: MatchModel::new(len),
             mixer: Mixer::new(4 * 256),
             mixer2: Mixer::new(256),
-            apm1: Apm::new(256, APM_RATE),
-            apm2: Apm::new(1 << 16, APM_RATE),
+            apm1: Apm::new(256),
+            apm2: Apm::new(1 << 16),
             c0: 1,
             nbits: 0,
             c4: 0,
             c8: 0,
             word: 0,
-            cpos: Box::new([[0; 4]; 256]),
-            rlen: 0,
-            rlen1: 0,
-            rcount1: 0,
-            rlen2: 0,
-            rcount2: 0,
+            records: Records::new(),
             pr: 2048,
         };
         cm.set_byte_contexts();
@@ -660,67 +937,21 @@ impl Cm {
         cm
     }
 
-    /// The byte `k` records back, i.e. in the same column of an earlier
-    /// record (0 when no record length is known or it is before the start).
-    /// The match buffer holds the whole block, so any distance up to `pos`
-    /// is still there.
+    /// Returns the byte `k` records back, or 0 if the block does not reach
+    /// that far. The match history holds the whole block.
     fn above(&self, k: usize) -> u32 {
-        let d = k * self.rlen;
-        if self.rlen == 0 || d > self.mm.pos {
+        let d = k * self.records.len();
+        if d > self.mm.pos {
             return 0;
         }
         u32::from(self.mm.buf[(self.mm.pos - d) & (self.mm.buf.len() - 1)])
     }
 
-    /// Detect fixed-length records, after Mahoney's paq8.
-    ///
-    /// In a table of records, a given byte value tends to recur at the same
-    /// distance, the record length. So for each byte value the last four
-    /// positions are kept, and when the gap to this occurrence equals the
-    /// three gaps before it, that gap `r` is a candidate length. Two
-    /// candidates are tracked with confirmation counts (a new one replaces
-    /// the weaker); a candidate confirmed 16 times becomes the record length
-    /// `rlen`. Adopting one clears both counts, so the detector follows the
-    /// data when the record length changes rather than holding on to an old
-    /// one.
-    fn detect_record(&mut self, byte: u8) {
-        let pos = self.mm.pos;
-        let c = &mut self.cpos[byte as usize];
-        let r = pos - c[0];
-        if r > 1 && c[3] > 0 && r == c[0] - c[1] && r == c[1] - c[2] && r == c[2] - c[3] {
-            if r == self.rlen1 {
-                self.rcount1 += 1;
-            } else if r == self.rlen2 {
-                self.rcount2 += 1;
-            } else if self.rcount1 > self.rcount2 {
-                self.rlen2 = r;
-                self.rcount2 = 1;
-            } else {
-                self.rlen1 = r;
-                self.rcount1 = 1;
-            }
-        }
-        c[3] = c[2];
-        c[2] = c[1];
-        c[1] = c[0];
-        c[0] = pos;
-        if self.rcount1 > 15 && self.rlen != self.rlen1 {
-            self.rlen = self.rlen1;
-            self.rcount1 = 0;
-            self.rcount2 = 0;
-        }
-        if self.rcount2 > 15 && self.rlen != self.rlen2 {
-            self.rlen = self.rlen2;
-            self.rcount1 = 0;
-            self.rcount2 = 0;
-        }
-    }
-
-    /// Compute, once per byte, the context of each hashed model: orders 2,
-    /// 3, 4 and 6 (the last 2, 3, 4 and 6 bytes), the current word (letters
-    /// only, case folded, with the previous byte), and two sparse contexts
-    /// for fixed-width binary data (described below). The second argument
-    /// of each `hash` only keeps the models' hash spaces apart.
+    /// Computes the context of each hashed model for the next byte: the last 2,
+    /// 3, 4 and 6 bytes; the current word (letters only, case folded) with the
+    /// previous byte; and two sparse contexts for fixed-width data, described
+    /// where they are computed. The second argument of each `hash` keeps the
+    /// models' hash spaces apart.
     fn set_byte_contexts(&mut self) {
         let c4 = self.c4;
         let col = self.mm.pos as u32 & 3;
@@ -733,43 +964,24 @@ impl Cm {
             // Bytes 2 and 4 back with the position mod 4: the same field of
             // the previous 4-byte word, as in machine instructions.
             hash(c4 & 0xFF00_FF00, 8 + (col << 8)),
-            // Once a record length is known: the bytes one and two records
-            // above, with the previous byte (the same column of earlier
-            // records predicts this one). Until then: bytes 4 and 5 back
-            // with the position mod 4.
-            if self.rlen > 0 {
-                hash(self.above(1) | (self.above(2) << 8) | ((c4 & 0xFF) << 16), 10 | ((self.rlen as u32) << 4))
-            } else {
-                hash((c4 >> 24) | ((self.c8 & 0xFF) << 8) | (col << 16), 9)
-            },
+            // The bytes one and two records back, with the previous byte.
+            hash(self.above(1) | (self.above(2) << 8) | ((c4 & 0xFF) << 16), 10 | ((self.records.len() as u32) << 4)),
         ];
     }
 
-    /// Predict the next bit into `self.pr`.
-    ///
-    /// Each model gives its prediction as a stretched probability: order 0
-    /// and order 1 from counters indexed by the partial byte, each hashed
-    /// model twice (its slot's probability, and what its bit history
-    /// predicts), the match model, and a constant bias. The hashed models
-    /// look their buckets up only at the start of each nibble, since the
-    /// four bits of a nibble share one bucket. Two mixers combine the
-    /// inputs, one choosing its weights by match length and partial byte,
-    /// the other by the previous byte, and their outputs are averaged. Two
-    /// APMs correct the result, in order-0 and order-1 context, and the
-    /// final probability blends the mixed and the corrected predictions,
-    /// weighting the order-1 correction double.
+    /// Predicts the next bit into `self.pr`, as the module documentation
+    /// describes. The hashed models look up their buckets only at the start of
+    /// a nibble, since the four bits of a nibble share a bucket.
     fn predict(&mut self) {
         let c0 = self.c0;
-        let st = &self.stretch;
         let c1 = (self.c4 & 0xFF) as usize;
         self.o1_idx = (c1 << 8) | c0 as usize;
-        let mut x = [0i32; N_INPUTS];
-        x[0] = st.get(self.o0.p(c0 as usize));
-        x[1] = st.get(self.o1.p(self.o1_idx));
+        let x = &mut self.x;
+        x[0] = stretch(self.o0.p(c0 as usize));
+        x[1] = stretch(self.o1.p(self.o1_idx));
         if self.nbits == 0 || self.nbits == 4 {
-            let shift = 32 - BUCKET_BITS;
             for k in 0..N_HASHED {
-                self.bucket[k] = self.hashed[k].find(hash(self.hctx[k], c0), shift);
+                self.bucket[k] = self.hashed.find(k, hash(self.hctx[k], c0));
             }
         }
         // The bits of the current nibble seen so far, with a leading 1: the
@@ -781,49 +993,45 @@ impl Cm {
             ((c0 & ((1 << m) - 1)) | (1 << m)) as usize
         };
         for k in 0..N_HASHED {
-            let slot = self.hashed[k].t[self.bucket[k]].0[self.node];
-            x[2 + k] = st.get(counter_p(slot));
-            let hi = hist_index(slot);
+            let slot = self.hashed.t[self.bucket[k]].0[self.node];
+            x[2 + k] = stretch(counter_p(slot));
+            let hi = k * HIST_STATES + hist_index(slot);
             self.hidx[k] = hi;
-            x[2 + N_HASHED + k] = st.get(self.hmaps[k].p(hi));
+            x[2 + N_HASHED + k] = stretch(self.hmaps.p(hi));
         }
-        x[2 * N_HASHED + 2] = self.mm.predict(c0, self.nbits, st);
+        x[2 * N_HASHED + 2] = self.mm.predict(c0, self.nbits);
         x[2 * N_HASHED + 3] = 256;
-        self.mixer.x = x;
-        self.mixer2.x = x;
         let set = (self.mm.len_class() << 8) | c0 as usize;
-        let m1 = self.mixer.mix(set);
-        let m2 = self.mixer2.mix(c1);
-        let pm = squash((st.get(m1) + st.get(m2)) >> 1);
-        let s = st.get(pm);
+        let m1 = self.mixer.mix(x, set);
+        let m2 = self.mixer2.mix(x, c1);
+        let pm = squash((stretch(m1) + stretch(m2)) >> 1);
+        let s = stretch(pm);
         let a1 = self.apm1.p(s, c0 as usize);
         let a2 = self.apm2.p(s, (c1 << 8) | c0 as usize);
         self.pr = ((pm + a1 + 2 * a2 + 2) >> 2).clamp(1, 4095);
     }
 
-    /// Probability that the next bit is 1, as a fraction of 2^16
-    /// (always in `16..=65520`).
+    /// Returns the probability that the next bit is 1, as a fraction of 2^16.
+    /// It is always in `16..=65520`.
     #[inline]
     pub fn p1(&self) -> u16 {
         (self.pr << 4) as u16
     }
 
-    /// Learn the coded `bit` in every model, mixer and APM (each trains the
-    /// slot or weights it used for the prediction), extend the partial byte,
-    /// and predict the next bit. At the end of a byte, also update the byte
-    /// history, the word, the match model and the record detector, and
-    /// recompute the contexts.
+    /// Learns the coded `bit` and predicts the next. Every model, mixer and map
+    /// trains the slot or weights it used for the prediction. At the end of a
+    /// byte the history, the word, the match model and the record detector
+    /// advance, and the contexts are recomputed.
     pub fn update(&mut self, bit: bool) {
         self.o0.update(self.c0 as usize, bit);
         self.o1.update(self.o1_idx, bit);
         for k in 0..N_HASHED {
-            let h = &mut self.hashed[k];
-            hist_update(&mut h.t[self.bucket[k]].0[self.node], bit);
-            self.hmaps[k].update(self.hidx[k], bit);
+            hist_update(&mut self.hashed.t[self.bucket[k]].0[self.node], bit);
+            self.hmaps.update(self.hidx[k], bit);
         }
         self.mm.update(bit);
-        self.mixer.update(bit);
-        self.mixer2.update(bit);
+        self.mixer.update(&self.x, bit);
+        self.mixer2.update(&self.x, bit);
         self.apm1.update(bit);
         self.apm2.update(bit);
 
@@ -843,7 +1051,7 @@ impl Cm {
             }
             let h6 = hash(hash(self.c4, 0x6D), self.c8 & 0xFFFF);
             self.mm.byte_update(byte, h6);
-            self.detect_record(byte);
+            self.records.update(byte, &self.mm.buf, self.mm.pos);
             self.set_byte_contexts();
         }
         self.predict();
@@ -854,47 +1062,77 @@ impl Cm {
 mod tests {
     use super::*;
 
+    /// The table is the logistic function rounded to the nearest integer.
+    #[test]
+    fn squash_is_the_logistic_function() {
+        for d in -2047..=2047 {
+            let exact = 4096.0 / (1.0 + (-f64::from(d) / 256.0).exp());
+            let got = f64::from(squash(d));
+            assert!((got - exact.clamp(1.0, 4095.0)).abs() <= 0.5 + 1e-6, "d={d} got={got} exact={exact}");
+            assert_eq!(squash(d) + squash(-d), 4096, "d={d}");
+        }
+        assert!((-2047..2047).all(|d| squash(d) <= squash(d + 1)));
+    }
+
+    /// No other `d` has a squash nearer `p`, and `stretch` is odd.
     #[test]
     fn stretch_inverts_squash() {
-        let st = Stretch::new();
-        for p in 1..4095 {
-            let d = st.get(p);
-            assert!((squash(d) - p).abs() <= 40, "p={p} d={d} squash={}", squash(d));
+        for p in 1..4096 {
+            let d = stretch(p);
+            let err = (squash(d) - p).abs();
+            assert!(err <= 2, "p={p} d={d}");
+            assert!((-2047..=2047).all(|x| (squash(x) - p).abs() >= err), "p={p}");
+            assert_eq!(stretch(4096 - p), -d, "p={p}");
         }
-        assert!(st.get(2048).abs() <= 2);
+        assert_eq!(stretch(2048), 0);
+    }
+
+    /// A map starts as the identity and learns a context's bias.
+    #[test]
+    fn a_probability_map_starts_as_the_identity_and_learns() {
+        let mut apm = Apm::new(2);
+        for st in (-2048..=2047).step_by(1 << APM_SHIFT) {
+            assert!((apm.p(st.max(-2047), 1) - squash(st)).abs() <= 1, "st={st}");
+        }
+        for _ in 0..2000 {
+            apm.p(stretch(2048), 0);
+            apm.update(true);
+        }
+        assert!(apm.p(stretch(2048), 0) > 3900);
+        assert!((apm.p(stretch(2048), 1) - 2048).abs() <= 3, "another context is untouched");
     }
 
     #[test]
     fn empty_buckets_are_never_matched_and_are_claimed_first() {
-        let mut t = HashedCounters::new(4);
+        let mut t = HashedCounters::new(1, 4);
         let shift = 32 - 4;
         // Fresh buckets are empty: metadata 0, use count 0.
         assert!(t.t.iter().all(|b| b.0[0] == 0 && b.0[1..].iter().all(|&c| c == COUNTER_INIT)));
         // Any hash, including ones whose check bits are zero, claims a
         // bucket with use count 1 rather than matching an empty one.
         for h in [0u32, 0x8000_0000, 0x0000_FFFF, 0xFFFF_0000] {
-            let mut t = HashedCounters::new(4);
-            let i = t.find(h, shift);
+            let mut t = HashedCounters::new(1, 4);
+            let i = t.find(0, h);
             assert_eq!(t.t[i].0[0] >> 16, 1, "h={h:#x}");
             assert_ne!(t.t[i].0[0] & OCCUPIED, 0);
             // The pair's other bucket is still empty.
             assert_eq!(t.t[i ^ 1].0[0], 0);
             // Finding it again is a hit that increments the use count.
-            assert_eq!(t.find(h, shift), i);
+            assert_eq!(t.find(0, h), i);
             assert_eq!(t.t[i].0[0] >> 16, 2);
         }
         // A second context mapping to the same pair takes the empty bucket,
         // not the occupied one.
         let h = 0x1234_5678;
-        let i = t.find(h, shift);
+        let i = t.find(0, h);
         let pair = |x: u32| ((x >> shift) as usize & 15) & !1;
         let mut other = h;
         while pair(other) != pair(h) || HashedCounters::tag(other) == HashedCounters::tag(h) {
             other = other.wrapping_add(0x9E37_79B9);
         }
-        let j = t.find(other, shift);
+        let j = t.find(0, other);
         assert_eq!(j, i ^ 1, "empty bucket in the pair should be claimed first");
-        assert_eq!(t.find(h, shift), i, "the first context is still present");
+        assert_eq!(t.find(0, h), i, "the first context is still present");
     }
 
     #[test]
@@ -910,44 +1148,51 @@ mod tests {
         }
     }
 
-    fn feed(cm: &mut Cm, byte: u8) {
-        for k in (0..8).rev() {
-            cm.update((byte >> k) & 1 == 1);
-        }
-    }
-
-    #[test]
-    fn record_length_is_adopted_on_the_sixteenth_confirmation() {
-        // Every byte value recurs with period 37, so from the fifth
-        // occurrence of a value on, each byte confirms the gap once.
-        const P: usize = 37;
-        let data: Vec<u8> = (0..400).map(|i| (i % P) as u8 * 3).collect();
-        let mut cm = Cm::new(data.len());
-        let first_confirm = 4 * P;
-        for (i, &b) in data.iter().enumerate() {
-            feed(&mut cm, b);
-            if i < first_confirm + 15 {
-                assert_eq!(cm.rlen, 0, "adopted early at byte {i}");
-            } else if i == first_confirm + 15 {
-                assert_eq!(cm.rlen, P, "not adopted at byte {i}");
-                assert_eq!((cm.rcount1, cm.rcount2), (0, 0), "counts not cleared");
+    fn feed(cm: &mut Cm, data: &[u8]) {
+        for &byte in data {
+            for k in (0..8).rev() {
+                cm.update((byte >> k) & 1 == 1);
             }
         }
-        assert_eq!(cm.rlen, P);
-        let pos = data.len();
-        assert_eq!(cm.above(1), u32::from(data[pos - P]));
-        assert_eq!(cm.above(2), u32::from(data[pos - 2 * P]));
     }
 
+    /// Records of 37 bytes whose columns hold steady values are found, and
+    /// the bytes above are those one and two records back.
     #[test]
-    fn above_needs_enough_history() {
-        let mut cm = Cm::new(1 << 16);
-        for b in [5u8, 6, 7] {
-            feed(&mut cm, b);
+    fn a_record_length_is_found() {
+        const R: usize = 37;
+        let mut s = 7u64;
+        let data: Vec<u8> = (0..400 * R)
+            .map(|i| {
+                s = s.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+                let column = (i % R) as u8;
+                if column % 5 == 0 {
+                    (s >> 40) as u8
+                } else {
+                    column.wrapping_mul(29) ^ 0x5A
+                }
+            })
+            .collect();
+        let mut cm = Cm::new(data.len());
+        assert_eq!(cm.records.len(), DEFAULT_RECORD);
+        feed(&mut cm, &data);
+        assert_eq!(cm.records.len(), R);
+        assert_eq!(cm.above(1), u32::from(data[data.len() - R]));
+        assert_eq!(cm.above(2), u32::from(data[data.len() - 2 * R]));
+        let mut cm = Cm::new(64);
+        feed(&mut cm, b"abc");
+        assert_eq!(cm.above(1), 0, "the block does not reach a record back");
+    }
+
+    /// The code length of a byte falls as its context is learned.
+    #[test]
+    fn a_conditional_model_learns() {
+        let mut m = Conditional::new();
+        let first = m.cost(7, 9);
+        for _ in 0..600 {
+            m.cost(7, 9);
         }
-        assert_eq!(cm.above(1), 0, "no record length yet");
-        cm.rlen = 3;
-        assert_eq!(cm.above(1), 5, "distance equal to pos reaches the first byte");
-        assert_eq!(cm.above(2), 0, "distance beyond pos");
+        assert!(first >= 8 << 8 && m.cost(7, 9) < 64 && m.cost(7, 10) > 8 << 8);
+        assert_eq!((log2_q8(1), log2_q8(2), log2_q8(3), log2_q8(1 << 16)), (0, 256, 384, 16 << 8));
     }
 }

@@ -95,12 +95,16 @@ class TreeEvidenceTests(unittest.TestCase):
 
     def test_selection_replaces_level_three_and_adds_the_reference(self):
         rows = report.selected_rows()
-        # 324 unchanged historical attempts, 36 run5 rows and 36 reference rows.
+        # 216 attempts of release 0.7.0, 144 of the other compressors and
+        # 36 reference rows.
         self.assertEqual(len(rows), 396)
         report.validate(rows)
         tree = [r for r in rows if r["codec"] == "acz3"]
         self.assertEqual(sum(int(r["packed"]) for r in tree if r["rep"] == "1"), 50_601_960)
-        self.assertEqual((str(report.corpus_time(tree, "enc")), str(report.corpus_time(tree, "dec"))), ("21.64", "23.56"))
+        self.assertEqual((str(report.corpus_time(tree, "enc")), str(report.corpus_time(tree, "dec"))), ("20.28", "19.73"))
+        cm = [r for r in rows if r["codec"] == "acz4"]
+        self.assertEqual(sum(int(r["packed"]) for r in cm if r["rep"] == "1"), 42_443_079)
+        self.assertEqual((str(report.corpus_time(cm, "enc")), str(report.corpus_time(cm, "dec"))), ("152.09", "159.56"))
         ref = [r for r in rows if r["codec"] == "ppmd7z"]
         self.assertEqual(sum(int(r["packed"]) for r in ref if r["rep"] == "1"), 49_029_343)
 

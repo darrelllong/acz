@@ -1,0 +1,1 @@
+2026-11-11: two rustc processes (another user's build, cores 4 and 18 at launch) ran during the first configuration, acz -4. Its totals are about 3% above the same binary's on sekhmet and above this run's own -4 --dedup rows, which ran after the build ended. The run is retained and is not the run of record; silesia-v14-af3e950-run2 repeats it on a quiet host.

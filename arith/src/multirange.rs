@@ -4,64 +4,69 @@
 //
 // Dedicated to the memory of my colleague Glen G. Langdon
 
-//! A multi-symbol range coder with byte-wise renormalization.
+//! A multi-symbol range coder with byte-wise renormalization, after Moffat,
+//! Neal and Witten (1998, §4.4) and Schindler (1998).
 //!
-//! An event is an interval `[l, h)` of a total `t`, as for
-//! [`crate::Encoder`], or a binary decision with a 16-bit probability.
-//! Following Moffat, Neal and Witten (1998, §4.4), the encoder divides
-//! once per interval: `r = ⌊R / t⌋`, the low end moves up by `r·l`, and the
-//! range becomes `r·(h − l)`, or, for the last event of the total
-//! (`h = t`), all that is left above `r·l`, so that no part of the range
-//! goes unused. The decoder keeps the code value relative to the low end
-//! (their `D = V − L`), divides once for `r` and once to find the target.
-//! A binary decision splits the range with a shift and one product.
+//! An event is an interval `[l, h)` of a total `t`, or a binary decision with a
+//! 16-bit probability. For an interval the encoder divides once: `r = ⌊R / t⌋`,
+//! the low end moves up by `r·l`, and the range becomes `r·(h − l)`. The last
+//! interval of the total, `h = t`, takes all that is left above `r·l`, so no
+//! part of the range is wasted. The decoder keeps the code value relative to
+//! the low end and divides twice, once for `r` and once for the target. A
+//! binary decision splits the range with a shift and a product.
 //!
-//! Output is a byte at a time, as in [`crate::RangeEncoder`] (Schindler,
-//! 1998): whenever the range falls below 2⁴⁸ its top byte is settled except
-//! for a carry, which is Langdon's carry-over problem. The last byte
-//! written is held back in `cache`, with a count of the `0xFF` bytes after
-//! it; a carry out of the 56-bit `low` increments `cache` and turns those
-//! into `0x00`. No byte is changed after it is written. Against the
-//! bit-wise [`crate::Encoder`], this saves the per-bit loop: one division
-//! and a renormalization by whole bytes per event.
+//! Whenever the range falls below 2⁴⁸ its top byte is settled except for a
+//! carry out of the 56-bit `low`, which is Langdon's carry-over problem.
+//! [`crate::carry`] holds back the bytes a carry could change, so no byte
+//! changes after it is written.
 //!
-//! **Precision.** Before each event the range is in `[2⁴⁸, 2⁵⁶)`. With
-//! totals of at most [`MULTI_MAX_TOTAL`] = 2²⁰, `r` is at least 2²⁸, so
-//! rounding it down gives up less than one part in 2²⁸ of the range. A
-//! binary decision splits at `⌊R / 2¹⁶⌋·(2¹⁶ − p₁)`, which leaves both parts
-//! non-empty for every `p₁ ∈ [1, 2¹⁶)`.
+//! # Precision
 //!
-//! **Termination.** [`MultiRangeEncoder::finish`] writes out all of `low`:
-//! eight bytes with the held-back one. The first byte of a stream is
-//! always 0. The decoder reads eight bytes to start and one per
-//! renormalization, so it reads exactly what was written, and the relative
-//! code value ends at 0.
+//! Before each event the range is in `[2⁴⁸, 2⁵⁶)`. Totals are at most
+//! [`MULTI_MAX_TOTAL`] = 2²⁰, so `r` is at least 2²⁸ and rounding it down gives
+//! up less than one part in 2²⁸ of the range. A binary decision splits at
+//! `⌊R / 2¹⁶⌋·(2¹⁶ − p₁)`, which leaves both parts non-empty for every `p₁` in
+//! `[1, 2¹⁶)`.
 //!
-//! **Canonical decoding.** The relative code value of a valid stream is
-//! always below the range. That holds at the start if the first eight bytes
-//! say so, and every step keeps it: a symbol below the last leaves
-//! `code − r·l < r·(h − l)`; the last symbol, which a corrupt target is
-//! clamped to, takes all that is left of the range; a binary decision
-//! keeps the code value in the part it falls in; and renormalizing maps
-//! `code < range < 2⁴⁸` to `256·code + b < 256·range`. So the 56-bit mask
-//! never discards a bit, the code value tracks the stream exactly, and
-//! ending at 0 after exactly the bytes written leaves one stream per event
-//! sequence. [`MultiRangeDecoder::new`] therefore rejects a stream that
-//! starts with the code value at or above the range: without that check, a
-//! stream starting `00 ff ff ff ff ff ff ff` decodes like one starting
-//! `00 ff ff ff ff ff ff fe` once the mask has dropped the excess.
+//! # Termination
 //!
-//! **References.**
-//! A. Moffat, R. M. Neal and I. H. Witten, *Arithmetic Coding Revisited*,
-//! ACM Trans. Inf. Syst. 16(3), 1998, pp. 256–294.
+//! [`MultiRangeEncoder::finish`] writes out all of `low`, eight bytes with the
+//! held-back one. The first byte of a stream is always 0. The decoder reads
+//! eight bytes to start and one per renormalization, so it reads what was
+//! written and no more, and its relative code value ends at 0.
+//!
+//! # One stream for each sequence of events
+//!
+//! The relative code value of a valid stream is always below the range. It is
+//! at the start if the first eight bytes say so, and every step keeps it there.
+//! A symbol below the last leaves `code − r·l < r·(h − l)`. The last symbol, to
+//! which a corrupt target is clamped, takes all that is left of the range. A
+//! binary decision keeps the code value in the part it falls in. Renormalizing
+//! maps `code < range < 2⁴⁸` to `256·code + b < 256·range`. So the 56-bit mask
+//! drops no bit, and a stream that ends at 0 after the bytes written is the
+//! only one for its events.
+//!
+//! [`MultiRangeDecoder::new`] rejects a stream that starts with the code value
+//! at or above the range. Without that check, a stream starting
+//! `00 ff ff ff ff ff ff ff` would decode like one starting
+//! `00 ff ff ff ff ff ff fe`.
+//!
+//! # References
+//!
+//! A. Moffat, R. M. Neal and I. H. Witten, *Arithmetic Coding Revisited*, ACM
+//! Trans. Inf. Syst. 16(3), 1998, pp. 256–294.
+//!
 //! M. Schindler, *A Fast Renormalisation for Arithmetic Coding*, Proc. Data
 //! Compression Conference, 1998, p. 572.
-//! G. G. Langdon, *An Introduction to Arithmetic Coding*, IBM J. Res.
-//! Develop. 28(2), 1984, pp. 135–149 (carry-over).
+//!
+//! G. G. Langdon, *An Introduction to Arithmetic Coding*, IBM J. Res. Develop.
+//! 28(2), 1984, pp. 135–149.
 
 use std::io::{self, Write};
 
-/// Renormalize when the range falls below this.
+use crate::carry::Carry;
+
+/// The range is renormalized when it falls below this.
 const TOP: u64 = 1 << 48;
 /// `low` holds 56 bits; bit 56 is a carry.
 const LOW_BITS: u32 = 56;
@@ -74,27 +79,25 @@ fn poisoned_error() -> io::Error {
     io::Error::other("range encoder unusable after an earlier I/O error")
 }
 
-/// Byte-wise multi-symbol range encoder.
-///
-/// Errors are final, as for [`crate::Encoder`]: after an I/O error every
-/// later call fails.
+/// A byte-wise multi-symbol range encoder. After an I/O error every later call
+/// fails.
 pub struct MultiRangeEncoder<W: Write> {
+    /// The low end of the interval: 56 bits, and above them a carry.
     low: u64,
     range: u64,
-    cache: u8,
-    /// Bytes pending output: `cache` and the `0xFF` bytes after it.
-    pending: u64,
+    carry: Carry,
     out: W,
     poisoned: bool,
 }
 
 impl<W: Write> MultiRangeEncoder<W> {
-    /// An encoder writing to `sink` (buffer it if unbuffered).
+    /// Returns an encoder writing to `sink`. The encoder writes a byte at a
+    /// time, so `sink` should be buffered.
     pub fn new(sink: W) -> Self {
-        MultiRangeEncoder { low: 0, range: LOW_MASK, cache: 0, pending: 1, out: sink, poisoned: false }
+        MultiRangeEncoder { low: 0, range: LOW_MASK, carry: Carry::new(), out: sink, poisoned: false }
     }
 
-    /// Code the interval `[cum_low, cum_high)` of `[0, total)`.
+    /// Codes the interval `[cum_low, cum_high)` of `[0, total)`.
     ///
     /// # Panics
     ///
@@ -115,9 +118,8 @@ impl<W: Write> MultiRangeEncoder<W> {
         self.normalize()
     }
 
-    /// Code a binary event whose 1 has probability `p1 / 2¹⁶`: the 0 takes
-    /// the lower part of the range, the 1 the upper, as in
-    /// [`crate::Encoder::encode_bit_p`].
+    /// Codes a binary event whose 1 has probability `p1 / 2¹⁶`. The 0 takes the
+    /// lower part of the range and the 1 the upper.
     ///
     /// # Panics
     ///
@@ -150,39 +152,30 @@ impl<W: Write> MultiRangeEncoder<W> {
         Ok(())
     }
 
-    /// Move the top byte of `low` out: write the held-back byte and the
-    /// `0xFF`s after it once no carry can reach them, else count one more
-    /// `0xFF`.
+    /// Moves the top byte of `low` out, with the carry above it if there is
+    /// one.
+    #[inline]
     fn shift_low(&mut self) -> io::Result<()> {
-        if self.low < 0xFF << (LOW_BITS - 8) || self.low > LOW_MASK {
-            let carry = (self.low >> LOW_BITS) as u8;
-            let mut byte = self.cache;
-            while self.pending > 0 {
-                self.out.write_all(&[byte.wrapping_add(carry)])?;
-                byte = 0xFF;
-                self.pending -= 1;
-            }
-            self.cache = (self.low >> (LOW_BITS - 8)) as u8;
-        }
-        self.pending += 1;
+        self.carry.push(&mut self.out, (self.low >> (LOW_BITS - 8)) as u8, self.low > LOW_MASK)?;
         self.low = (self.low << 8) & LOW_MASK;
         Ok(())
     }
 
-    /// Write out the rest of the code string and return the sink.
+    /// Writes out the rest of the code string and returns the sink.
     pub fn finish(mut self) -> io::Result<W> {
         if self.poisoned {
             return Err(poisoned_error());
         }
-        for _ in 0..8 {
+        for _ in 0..7 {
             self.shift_low()?;
         }
+        self.carry.flush(&mut self.out)?;
         self.out.flush()?;
         Ok(self.out)
     }
 }
 
-/// Byte-wise multi-symbol range decoder, reading a whole code string.
+/// A byte-wise multi-symbol range decoder over a whole code string.
 pub struct MultiRangeDecoder<'a> {
     /// The code value less the low end of the interval.
     code: u64,
@@ -197,10 +190,8 @@ pub struct MultiRangeDecoder<'a> {
 }
 
 impl<'a> MultiRangeDecoder<'a> {
-    /// A decoder of the code string `data`.
-    ///
-    /// Fails if `data` cannot be the start of a code string the encoder
-    /// writes.
+    /// Returns a decoder of the code string `data`, or an error if `data`
+    /// cannot be the start of a code string the encoder writes.
     pub fn new(data: &'a [u8]) -> io::Result<Self> {
         if data.len() < 8 || data[0] != 0 {
             return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid range-coded stream"));
@@ -213,9 +204,9 @@ impl<'a> MultiRangeDecoder<'a> {
         Ok(MultiRangeDecoder { code, range: LOW_MASK, r: 1, data, pos: 8, overrun: false })
     }
 
-    /// Where the code value falls in `[0, total)`: the `x` of the event
-    /// `[cum_low, cum_high)` with `cum_low <= x < cum_high`.
-    /// [`MultiRangeDecoder::consume`] must follow, with the same `total`.
+    /// Returns where the code value falls in `[0, total)`. The event
+    /// `[cum_low, cum_high)` that holds it must then be passed to
+    /// [`MultiRangeDecoder::consume`] with the same `total`.
     ///
     /// # Panics
     ///
@@ -228,8 +219,8 @@ impl<'a> MultiRangeDecoder<'a> {
         (self.code / self.r).min(u64::from(total - 1)) as u32
     }
 
-    /// Remove `[cum_low, cum_high)` of `total`, the event holding the last
-    /// target.
+    /// Removes the event `[cum_low, cum_high)` of `total`, which must hold the
+    /// last target.
     #[inline]
     pub fn consume(&mut self, cum_low: u32, cum_high: u32, total: u32) {
         debug_assert!(cum_low < cum_high && cum_high <= total);
@@ -239,7 +230,7 @@ impl<'a> MultiRangeDecoder<'a> {
         self.normalize();
     }
 
-    /// Decode a binary event coded by [`MultiRangeEncoder::encode_bit_p`].
+    /// Decodes a binary event coded by [`MultiRangeEncoder::encode_bit_p`].
     ///
     /// # Panics
     ///
@@ -278,7 +269,7 @@ impl<'a> MultiRangeDecoder<'a> {
         }
     }
 
-    /// Whether the stream ended exactly where the encoder finished it: every
+    /// Reports whether the stream ended where the encoder finished it: every
     /// byte read, none past the end, and the code value at the low end.
     pub fn is_canonical_end(&self) -> bool {
         !self.overrun && self.pos == self.data.len() && self.code == 0

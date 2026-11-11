@@ -49,7 +49,7 @@ const fn make_tables() -> [[u64; 256]; 8] {
 
 static TABLES: [[u64; 256]; 8] = make_tables();
 
-/// Incremental CRC-64 hasher.
+/// An incremental CRC-64.
 #[derive(Clone, Copy, Debug)]
 pub struct Crc64(u64);
 
@@ -60,12 +60,12 @@ impl Default for Crc64 {
 }
 
 impl Crc64 {
-    /// Fresh hasher.
+    /// Returns the CRC of no bytes.
     pub const fn new() -> Self {
         Crc64(u64::MAX)
     }
 
-    /// Feed bytes.
+    /// Adds `data`.
     pub fn update(&mut self, data: &[u8]) {
         let t = &TABLES;
         let mut c = self.0;
@@ -87,12 +87,12 @@ impl Crc64 {
         self.0 = c;
     }
 
-    /// Final CRC value.
+    /// Returns the CRC of the bytes added so far.
     pub fn value(&self) -> u64 {
         !self.0
     }
 
-    /// CRC of a single buffer.
+    /// Returns the CRC of `data`.
     pub fn of(data: &[u8]) -> u64 {
         let mut c = Self::new();
         c.update(data);

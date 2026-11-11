@@ -21,11 +21,18 @@ STAGES = {
 }
 
 
+# The source snapshot timed in run 5. The public repository omits it, and the
+# manifest's hashes identify it; where it is present it is checked.
+SNAPSHOT = "measured-source"
+
+
 def evidence(folder):
     manifest = json.loads((folder / "manifest.json").read_text())
     for name, wanted in manifest["files"].items():
         if not re.fullmatch(r"[0-9a-f]{64}", wanted):
             raise ValueError(f"Invalid evidence hash: {name}")
+        if name.startswith(SNAPSHOT + "/") and not (folder / SNAPSHOT).exists():
+            continue
         if hashlib.sha256((folder / name).read_bytes()).hexdigest() != wanted:
             raise ValueError(f"Changed evidence: {name}")
 

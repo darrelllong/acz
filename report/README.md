@@ -26,10 +26,10 @@ diagram uses compressed size on a common 0–100% of input scale across all twel
 time plots use measured CPU seconds on logarithmic horizontal axes. Before typesetting, the build checks that
 all 396 selected attempts exist exactly once, all processes succeeded, every
 round trip matched, input sizes and SHA-256 identities agree, and compressed
-sizes are stable across repetitions. The selection is the original
-experiment's 324 attempts for every configuration but level 3, the selected
-model and coder's 36 attempts from run 5, and 36 attempts
-of 7-Zip's PPMd. It sums bytes once per configuration; for each timing it
+sizes are stable across repetitions. The selection is the 216 attempts of
+release 0.7.0 (six `acz` configurations), the original experiment's 144
+attempts of xz, zstd, bzip2 and gzip, and 36 attempts of 7-Zip's PPMd. It
+sums bytes once per configuration; for each timing it
 sums user and system CPU seconds over the corpus per repetition and takes
 the median of those three totals. The historical trie/hash table retains its
 separate four-repetition calculation. Decimal arithmetic
@@ -37,6 +37,33 @@ preserves the recorded timing precision. A missing attempt or typesetting
 error fails the build rather than silently producing a partial report.
 
 ## Retained evidence
+
+### Release 0.7.0, every level
+
+`data/silesia-v14-af3e950-run2/` is the timing run of release 0.7.0 (format
+14, build `af3e950`), copied from `hathor:~/acz-eval/silesia-v14-af3e950-run2/`:
+levels 0 to 4 and level 4 with `--dedup`, twelve files, three repetitions,
+pinned to core 7. `bench.sh` times each encode and decode, compares every
+decoded file with its input, and stops at the first failure; `run.sh` runs
+the six configurations and writes `DONE` after the last. `rows.tsv` has one
+line per file and configuration: the compressed size, the median encode and
+decode times, and the three times of each. A time is user plus system CPU
+seconds. `env.txt` records the binary, script and corpus-manifest hashes,
+the compiler, the load at launch and the start and end times;
+`silesia.sha256` is that manifest. The build checks the manifest against the
+original experiment's input hashes, requires the sizes of levels 0 to 3 to
+equal those of the earlier runs, and takes all `acz` rows of the report from
+this run.
+
+Three other runs of the same script are retained and not selected.
+`data/silesia-v14-549d4ff/` timed build `549d4ff`, before the carry handling
+and the repeat-command code were rederived; its sizes at levels 0 to 4 equal
+the selected run's, and its `--dedup` total is 1,061 bytes smaller.
+`data/silesia-v14-af3e950/` is the first run of the final build on hathor;
+another user's compiler ran beside its level-4 configuration, whose times
+are about 3% high, as `NOTE-20261111.txt` there records.
+`data/silesia-v14-af3e950-sekhmet/` is the same build on sekhmet, a second
+machine of the same model; it agrees with the selected run within 1%.
 
 ### Current level 3: model and coder, run 5
 
@@ -55,9 +82,11 @@ removal off. The retained version-10/version-11 checks below preserve the
 tested payloads and sizes in that configuration; the complete public 0.5.0
 executable was not timed in run 5.
 
-The timed source is snapshot `c7aef7e0`, private format 12. `measured-source/`
-contains its runtime source and Cargo files; the other implementations are
-identified by hashes and retained privately. No port source is included here.
+The timed source is snapshot `c7aef7e0`, private format 12. Its runtime
+source and Cargo files, `measured-source/`, are retained privately; the
+public repository omits them, and `manifest.json` gives the SHA-256 of each
+file. The build checks them where they are present. The other
+implementations are identified by hashes and retained privately.
 `runner.sh` records the original paths and exact commands. Reproduction needs
 the matching inputs and baseline binaries/sources at adapted paths; building
 the current checkout alone does not reproduce all historical configurations.
@@ -295,13 +324,25 @@ remain separate. Held-out measurements are not pooled with Silesia.
 `data/heldout/` retains the Census and Backblaze size measurements, one row
 per sampled input: its path identifier (the first 16 hex digits of the
 SHA-256 of its source path), file type, measured bytes and SHA-256, and the
-compressed bytes of `acz -4`, `xz -9`, `zstd -19`, release 0.5.0's level 3
-(build `debc62e`) and the selected level 3 (build `a3c9440`, format 13).
+compressed bytes of `acz -4` (release 0.7.0, build `549d4ff`), `xz -9`,
+`zstd -19`, release 0.5.0's level 3 (build `debc62e`) and the selected
+level 3 (build `a3c9440`, format 13).
 `reduce_heldout.py` produced these rows from the raw 20-column rows written
 by `measure.sh` under `heldout.sh`; it requires exactly one row per input,
 codec and pass, and identical content in both passes. `knuth-sources.sha256`
 identifies the raw row files, sample lists and run records it read, which
 are retained privately; the `.env` files are the run records.
+Level 4 was measured again for release 0.7.0: `census-acz4-v14.tsv` and
+`backblaze-acz4-v14.tsv` have one row per input from that pass, produced by
+`reduce_heldout_v14.py`, and `knuth-sources-v14.sha256` identifies what it
+read. Census ran on knuth as two runs: `main-v14` over the sample list, and
+`main-v14-rest` for the 1,228 files queued on one worker behind the 48.7 GB
+input, which the other cores took when they were free; the note
+`census-main-v14.STOPPED-cpu7.note` records where the first run's worker was
+ended. Backblaze ran on sekhmet from a copy of the same files; every size was
+compared at launch, and the content hashes in the rows agree with the earlier
+passes. The builder joins these rows to the others by path identifier and
+rejects an input whose size, hash or status differs.
 `build_heldout_results.py` checks the manifest, rejects a duplicate, failed
 or missing input, requires 11,058 measured Census inputs plus the one empty
 input and all 688 Backblaze inputs, and writes the table.

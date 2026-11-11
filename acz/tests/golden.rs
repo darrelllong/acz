@@ -6,7 +6,7 @@
 
 //! Format stability and randomized round-trip tests.
 //!
-//! `tests/golden/*.acz` are reference v13 streams. Any change to the coder or
+//! `tests/golden/*.acz` are reference v14 streams. Any change to the coder or
 //! a model that alters the bitstream of an existing model id makes these
 //! tests fail. Until 1.0 the format is unstable and these are regenerated
 //! deliberately with each intentional break; at 1.0 they are frozen.
@@ -168,6 +168,7 @@ fn obsolete_versions_are_rejected() {
         ("v10", 10, 23),
         ("v11", 11, 23),
         ("v12", 12, 23),
+        ("v13", 13, 23),
     ] {
         let d = golden_dir().join("obsolete").join(dir);
         let mut n = 0;

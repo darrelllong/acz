@@ -4,11 +4,11 @@
 //
 // Dedicated to the memory of my colleague Glen G. Langdon
 
-//! The `.acz` stream format (version 13: blocked, parallel, checksummed framing).
+//! The `.acz` stream format (version 14: blocked, parallel, checksummed framing).
 //!
 //! ```text
 //! member  := header block* end trailer
-//! header  := magic "ACZ\x0D"   (4 bytes; the last byte is the format version)
+//! header  := magic "ACZ\x0E"   (4 bytes; the last byte is the format version)
 //!            model             (1 byte: 0, 1, 2 = order-0/1/2, 3 = PPM,
 //!                               4 = context mixing; any other value is
 //!                               rejected)
@@ -54,50 +54,57 @@
 //! stream  := member+
 //! ```
 //!
-//! Models 0 and 1 use the bit-wise coder; model 3 the multi-symbol range
-//! coder; models 2 and 4 the byte-wise binary range coder. Every coded block
-//! (or residual) starts from a freshly initialized model.
+//! Models 0 and 1 use the bit-wise coder, model 3 the multi-symbol range coder,
+//! and models 2 and 4 the byte-wise binary range coder. Every coded block or
+//! residual starts from a new model.
 //!
-//! **Parallel blocks.** Every block's model starts afresh and the framing
-//! gives each block's sizes, so the model-coded parts of blocks are
-//! compressed and decompressed on separate threads. With long-repeat removal,
-//! the copies are found and applied in stream order (they refer to earlier
-//! output), around the parallel model stages. The output is identical
-//! whatever the thread count.
+//! # Parallel blocks
 //!
-//! **Expansion.** A block that would not shrink is stored, so incompressible
-//! data grows by at most 17 bytes per block (9 header + 8 CRC) plus 33 per
-//! member (16 header + 1 end + 16 trailer). With long-repeat removal a block
-//! also carries its command list and two lengths; with no copies that
-//! envelope is at most 12 bytes (a one-byte list length, the selector, one
-//! literal-run varint, and the residual length), and each copy adds at most
-//! 16 bytes while removing at least 256, so the bound is 29 bytes per block
-//! plus 33 per member.
+//! Because every block starts from a new model and the framing gives its sizes,
+//! blocks are coded and decoded on separate threads. With long-repeat removal
+//! the copies are found and applied in stream order, since they refer to
+//! earlier output, around the parallel stage. The output does not depend on the
+//! number of threads.
 //!
-//! **Streaming.** Both directions read and write incrementally, with at most
-//! about `2 × threads` blocks in flight, so memory is bounded and the tool
-//! works as a pipeline transducer. Concatenated members decode to the
-//! concatenation of their contents.
+//! # Expansion
 //!
-//! **Integrity.** The header has its own CRC-64, so foreign or damaged
-//! files are rejected before decoding. Every block carries a CRC-64 over its
-//! position, framing and payload, checked *before* the block is decoded or
-//! any size-dependent memory is allocated. The data CRC-64 sits in the
-//! trailer, because a streaming compressor only knows it at end of input.
-//! Each coded block must also end canonically and consume exactly
-//! `packed-len` bytes.
+//! A block that would not shrink is stored, so incompressible data grows by at
+//! most 17 bytes per block (9 of header and 8 of CRC) and 33 per member (16 of
+//! header, 1 of end marker and 16 of trailer). With long-repeat removal a block
+//! also carries its command list and two lengths. With no copies that is at
+//! most 12 bytes: a one-byte list length, the selector, one literal-run varint,
+//! and the residual length. Each copy adds at most 16 bytes and removes at
+//! least 256, so the bound is 29 bytes per block and 33 per member.
 //!
-//! **Bounded memory.** The decoder works out, from the header alone, how
-//! much memory each in-flight block needs (payload, output and model), and
-//! limits the number of workers so the total stays within
-//! [`DecodeOptions::memory`]. A stream that cannot be decoded within the
-//! budget even on one thread is rejected before allocating. Payloads are read
-//! incrementally, so a forged length on a truncated stream cannot force a
-//! large allocation.
+//! # Streaming
 //!
-//! **Portability.** Every field has a fixed width and byte order, and the
-//! models use only integer arithmetic, so streams are identical on every
-//! platform (any endianness, any word size ≥ 32 bits).
+//! Both directions read and write as they go, with at most about `2 × threads`
+//! blocks in flight, so memory is bounded and the tool works in a pipeline.
+//! Concatenated members decode to the concatenation of their contents.
+//!
+//! # Integrity
+//!
+//! The header has its own CRC-64, so a foreign or damaged file is rejected
+//! before decoding. Every block carries a CRC-64 over its position, framing and
+//! payload, which is checked before the block is decoded or any memory that
+//! depends on its sizes is allocated. The CRC-64 of the data is in the trailer,
+//! because a streaming compressor knows it only at the end. Each coded block
+//! must also end canonically and use all `packed-len` bytes.
+//!
+//! # Bounded memory
+//!
+//! The decoder works out from the header how much memory each block in flight
+//! needs (payload, output and model) and limits the workers so that the total
+//! stays within [`DecodeOptions::memory`]. A stream that cannot be decoded
+//! within the budget on one thread is rejected before anything is allocated.
+//! Payloads are read incrementally, so a forged length on a truncated stream
+//! cannot force a large allocation.
+//!
+//! # Portability
+//!
+//! Every field has a fixed width and byte order, and the models use only
+//! integer arithmetic, so a stream is the same on every platform, whatever its
+//! byte order, with a word of at least 32 bits.
 
 use std::collections::BTreeMap;
 use std::io::{self, BufRead, Read, Write};
@@ -109,8 +116,8 @@ use crate::crc64::Crc64;
 use crate::dedup::{get_varint, pack_commands, put_varint, unpack_commands, MAX_VARINT_LEN};
 use crate::models::{decode_block, encode_block, Order};
 
-/// Magic number at the start of every member (last byte = format version).
-pub const MAGIC: [u8; 4] = *b"ACZ\x0D";
+/// The first four bytes of every member. The last is the format version.
+pub const MAGIC: [u8; 4] = *b"ACZ\x0E";
 const HEADER_LEN: usize = 16;
 const TRAILER_LEN: usize = 16;
 const BLOCK_HEADER_LEN: usize = 9;
@@ -123,41 +130,40 @@ const KIND_STORED: u8 = 2;
 /// Header flag: blocks carry long-repeat commands (see [`crate::dedup`]).
 const FLAG_DEDUP: u8 = 1;
 
-/// Smallest permitted block size (log2): 64 KiB.
+/// log2 of the smallest block size, 64 KiB.
 pub const MIN_BLOCK_LOG2: u8 = 16;
-/// Largest permitted block size (log2): 1 GiB.
+/// log2 of the largest block size, 1 GiB.
 pub const MAX_BLOCK_LOG2: u8 = 30;
-// Positions inside a block are stored as u32 by the CM match model; a block
-// must therefore stay below 4 GiB. Raising MAX_BLOCK_LOG2 past 31 is a
-// compile error, not a silent wrap.
+// The CM match model stores positions in a block as u32, so a block must
+// stay below 4 GiB.
 const _: () = assert!(MAX_BLOCK_LOG2 <= 31, "block positions must fit in u32");
 
-/// Default block size: 16 MiB.
+/// log2 of the default block size, 16 MiB.
 pub const DEFAULT_BLOCK_LOG2: u8 = 24;
 
-/// Default memory budget for compression and decompression: 4 GiB.
+/// The default memory budget, 4 GiB.
 pub const DEFAULT_MEMORY: u64 = 4 << 30;
 
-/// Default long-repeat window: 256 MiB.
+/// log2 of the default long-repeat window, 256 MiB.
 pub const DEFAULT_DEDUP_LOG2: u8 = 28;
-/// Largest long-repeat window: 64 GiB.
+/// log2 of the largest long-repeat window, 64 GiB.
 pub const MAX_DEDUP_LOG2: u8 = 36;
 
-/// Hard upper limit on worker threads, whatever the caller asks for.
+/// The most worker threads, whatever the caller asks for.
 pub const MAX_THREADS: usize = 1024;
 
 /// Compression settings.
 #[derive(Clone, Copy, Debug)]
 pub struct Options {
-    /// Model to use.
+    /// The model.
     pub order: Order,
     /// Block size is `2^block_log2` bytes.
     pub block_log2: u8,
-    /// Maximum worker threads (≥ 1); fewer are used if `memory` requires.
+    /// The most worker threads, at least 1. Fewer run if `memory` requires.
     pub threads: usize,
-    /// Memory budget in bytes for in-flight blocks and models.
+    /// The memory budget, in bytes, for blocks in flight and their models.
     pub memory: u64,
-    /// Long-repeat removal window (log2 bytes); 0 disables it. Must exceed
+    /// log2 of the long-repeat window, or 0 for none. It must exceed
     /// `block_log2`.
     pub dedup_log2: u8,
 }
@@ -177,9 +183,9 @@ impl Default for Options {
 /// Decompression settings.
 #[derive(Clone, Copy, Debug)]
 pub struct DecodeOptions {
-    /// Maximum worker threads (≥ 1); fewer are used if `memory` requires.
+    /// The most worker threads, at least 1. Fewer run if `memory` requires.
     pub threads: usize,
-    /// Memory budget in bytes for in-flight blocks and models.
+    /// The memory budget, in bytes, for blocks in flight and their models.
     pub memory: u64,
 }
 
@@ -189,18 +195,18 @@ impl Default for DecodeOptions {
     }
 }
 
-/// Fixed allowance added to the long-repeat memory bounds: their constant
-/// terms (varint lengths, the 64-byte payload margin) are under 128 bytes,
-/// and the rest absorbs allocator rounding.
+/// An allowance added to the long-repeat memory bounds. Their constant terms
+/// (varint lengths, the 64-byte payload margin) come to under 128 bytes, and
+/// the rest covers allocator rounding.
 const SLACK: u64 = 4096;
 
-/// Upper bound on the buffer memory one in-flight block needs.
+/// Returns an upper bound on the buffer memory one block in flight needs.
 ///
 /// Without long-repeat removal, every buffer's requested capacity is
-/// bounded by one block: input blocks are allocated at exactly the block size, trial code
-/// strings are capped below the raw size ([`encode_block`]), payloads grow
-/// at most to their declared length, and decoded output is allocated
-/// exactly; a block holds at most two such buffers at once.
+/// bounded by one block: an input block is allocated at the block size, a
+/// trial code string is capped below the raw size ([`encode_block`]), a
+/// payload grows at most to its declared length, and decoded output is
+/// allocated at its length. A block holds at most two such buffers at once.
 ///
 /// With long-repeat removal (block size B), a block holds at most, at any
 /// one stage:
@@ -228,10 +234,11 @@ fn buffer_cost(block_size: usize, dedup: bool) -> u64 {
     }
 }
 
-/// Number of workers that fit in `memory`, at most `min(threads,
-/// MAX_THREADS)`. With `t > 1` workers, up to `2t` blocks are in flight (one
-/// buffer pair each) and `t` models are live: `t × (2·buf + model)`. With
-/// one worker, one block and one model: `buf + model`.
+/// Returns the number of workers that fit in `memory`, at most
+/// `min(threads, MAX_THREADS)`. With `t > 1` workers, up to `2t` blocks are in
+/// flight, each with its buffers, and `t` models are live:
+/// `t × (2·buf + model)`. One worker has one block and one model:
+/// `buf + model`.
 fn workers_for(order: Order, block_size: usize, threads: usize, memory: u64, dedup: bool) -> io::Result<usize> {
     let model = crate::models::model_memory(order, block_size);
     let buf = buffer_cost(block_size, dedup);
@@ -247,9 +254,9 @@ fn workers_for(order: Order, block_size: usize, threads: usize, memory: u64, ded
     Ok(wanted.min(fit) as usize)
 }
 
-/// Number of hardware threads available to this process. Portable
-/// (`std::thread::available_parallelism`); on Linux it respects cgroup
-/// CPU quotas and affinity masks. Falls back to 1.
+/// Returns the number of hardware threads available to this process, or 1 if
+/// that cannot be found. On Linux it respects cgroup CPU quotas and affinity
+/// masks.
 pub fn default_threads() -> usize {
     thread::available_parallelism().map_or(1, |n| n.get())
 }
@@ -284,7 +291,7 @@ fn read_full<R: Read>(r: &mut R, buf: &mut [u8]) -> io::Result<usize> {
     Ok(got)
 }
 
-/// Fill `buf` completely, or fail as truncated input.
+/// Fills `buf`, or fails as truncated input.
 fn read_exact_or_truncated<R: Read>(r: &mut R, buf: &mut [u8]) -> io::Result<()> {
     if read_full(r, buf)? < buf.len() {
         return Err(truncated());
@@ -317,10 +324,9 @@ fn block_crc(index: u64, header: &[u8; BLOCK_HEADER_LEN], payload: &[u8]) -> u64
     c.value()
 }
 
-/// The long-repeat window for exponent `log2` (0 = none), validated before
-/// any shift: it must exceed the block size, be at most
-/// [`MAX_DEDUP_LOG2`], and be representable on this platform (a 2^32
-/// window cannot be used where `usize` has 32 bits).
+/// Returns the long-repeat window for exponent `log2`, or `None` for 0. The
+/// exponent is checked before any shift: the window must exceed the block size,
+/// be at most [`MAX_DEDUP_LOG2`], and fit this platform's `usize`.
 fn window_size(log2: u8, block_log2: u8) -> io::Result<Option<usize>> {
     if log2 == 0 {
         return Ok(None);
@@ -338,13 +344,13 @@ fn window_size(log2: u8, block_log2: u8) -> io::Result<Option<usize>> {
     })
 }
 
-/// The memory budget, capped at what this platform can address.
+/// Returns the memory budget, capped at what this platform can address.
 fn usable(memory: u64) -> u64 {
     memory.min(isize::MAX as u64)
 }
 
-/// Memory left for block workers after the long-repeat window (and, when
-/// encoding, the anchor table) is set aside.
+/// Returns the memory left for block workers once the long-repeat window and,
+/// when encoding, the anchor table are set aside.
 fn after_dedup(memory: u64, dedup: Option<usize>, side: Side, block_size: usize) -> io::Result<u64> {
     let Some(w) = dedup else { return Ok(memory) };
     // The window (and the anchor table when encoding), plus the sequential
@@ -376,9 +382,9 @@ enum Side {
     Decode,
 }
 
-/// Validate a stream's long-repeat window and decide, before anything is
-/// allocated, how many workers fit in `memory`. Returns the window (if
-/// any) and the worker count.
+/// Validates a stream's long-repeat window and decides, before anything is
+/// allocated, how many workers fit in `memory`. Returns the window, if any, and
+/// the number of workers.
 fn plan(
     order: Order,
     block_log2: u8,
@@ -406,23 +412,22 @@ fn header(opts: &Options) -> [u8; HEADER_LEN] {
     h
 }
 
-/// Run `work` over the jobs produced by `produce` on `threads` workers and
-/// deliver the results to `consume` in the order the jobs were produced.
-/// `produce` returns `Ok(None)` when there are no more jobs. The first
-/// error from any stage stops the pipeline and is returned.
+/// Runs `work` over the jobs from `produce` on `threads` workers and delivers
+/// the results to `consume` in the order the jobs were produced. `produce`
+/// returns `Ok(None)` when there are no more jobs. The first error from any
+/// stage stops the pipeline and is returned.
 ///
-/// `produce` and `consume` run on the calling thread, one job at a time and
-/// in order; only `work` runs in parallel. That is what lets a stage that
-/// carries state from one block to the next (reading the input, the
-/// long-repeat history, writing the output) stay sequential while the
-/// expensive modeling runs on every core. Each job carries a sequence
-/// number, and results that finish early wait in `pending` until all
-/// earlier ones have been consumed.
+/// `produce` and `consume` run on the calling thread, one job at a time and in
+/// order. Only `work` runs in parallel. A stage that carries state from one
+/// block to the next (reading the input, the long-repeat history, writing the
+/// output) can therefore stay sequential while the modeling uses every core.
+/// Each job carries a sequence number, and a result that finishes early waits
+/// in `pending` until the earlier ones have been consumed.
 ///
-/// At most `2 × threads` jobs are in flight, counting those finished but
-/// waiting for an earlier one: enough to keep every worker busy while one
-/// slow block holds up the output, and a fixed bound, which is what the
-/// memory admission in [`workers_for`] counts on.
+/// At most `2 × threads` jobs are in flight, counting those finished and
+/// waiting for an earlier one. That keeps every worker busy while one slow
+/// block holds up the output, and it is the fixed bound that the memory
+/// admission in [`workers_for`] relies on.
 fn ordered_pipeline<J, T, P, W, C>(threads: usize, mut produce: P, work: W, mut consume: C) -> io::Result<()>
 where
     J: Send,
@@ -508,15 +513,14 @@ where
     })
 }
 
-/// Compress everything from `input` into one member written to `output`.
+/// Compresses everything from `input` into one member written to `output`.
 ///
-/// The input is cut into blocks of the block size. Reading a block, and
-/// removing long repeats from it, happen in order, because the long-repeat
-/// history runs through the whole input. Each block is then coded with a
-/// fresh model, in parallel, and stored instead if coding would not make
-/// it smaller. The blocks are written in order, each with its header and
-/// a checksum over its index, header and payload, and the member ends
-/// with a checksum and the length of all the data.
+/// The input is cut into blocks. Reading a block and removing its long repeats
+/// happen in order, because the long-repeat history runs through the whole
+/// input. Each block is then coded with a new model, in parallel, or stored if
+/// coding would not make it smaller. The blocks are written in order, each with
+/// its header and a checksum over its index, header and payload. The member
+/// ends with a checksum and the length of all the data.
 ///
 /// `output` should be buffered. It is flushed before returning.
 ///
@@ -594,7 +598,7 @@ pub fn compress<R: Read, W: Write>(mut input: R, mut output: W, opts: &Options) 
     Ok(Stats { raw, packed })
 }
 
-/// `BufRead` adaptor counting consumed bytes.
+/// A `BufRead` adaptor that counts the bytes consumed.
 struct Counted<R> {
     inner: R,
     count: u64,
@@ -618,12 +622,12 @@ impl<R: BufRead> BufRead for Counted<R> {
     }
 }
 
-/// Decompress all members from `input` using `threads` workers, writing
-/// the data to `output` in order.
+/// Decompresses every member of `input` and writes the data to `output` in
+/// order.
 ///
-/// Data is written as it is decoded, so on corrupt input some output may
-/// already have been produced before the error is reported. `output` is
-/// flushed before returning successfully.
+/// Data is written as it is decoded, so on corrupt input some output may be
+/// written before the error is reported. `output` is flushed before a
+/// successful return.
 pub fn decompress<R: BufRead, W: Write>(input: R, mut output: W, opts: &DecodeOptions) -> io::Result<Stats> {
     let mut input = Counted { inner: input, count: 0 };
     let mut raw_total = decompress_member(&mut input, &mut output, true, opts)?;
@@ -634,8 +638,8 @@ pub fn decompress<R: BufRead, W: Write>(input: R, mut output: W, opts: &DecodeOp
     Ok(Stats { raw: raw_total, packed: input.count })
 }
 
-/// Read and check a member header; returns the model, the block size
-/// (log2) and the long-repeat window (log2, 0 for none).
+/// Reads and checks a member header. Returns the model, the log2 of the block
+/// size, and the log2 of the long-repeat window (0 for none).
 fn read_header<R: Read>(input: &mut R, first: bool) -> io::Result<(Order, u8, u8)> {
     let mut h = [0u8; HEADER_LEN];
     let n = read_full(input, &mut h)?;
@@ -670,17 +674,16 @@ fn read_header<R: Read>(input: &mut R, first: bool) -> io::Result<(Order, u8, u8
     Ok((order, h[6], h[7]))
 }
 
-/// Decompress one member, the mirror of [`compress`].
+/// Decompresses one member; the mirror of [`compress`].
 ///
-/// The header fixes the model, block size and long-repeat window, and so
-/// the number of workers, before model or history buffers are allocated.
-/// Reading a block is sequential: its header is checked against the
-/// limits the encoder obeys (which also bounds what a forged header can
-/// make the decoder allocate), its payload read, and its checksum
-/// verified. Each block is
-/// then decoded in parallel. Rebuilding long repeats and writing the
-/// output are sequential again, since copies refer to earlier output.
-/// Finally the trailer's length and checksum must match the data.
+/// The header fixes the model, block size and long-repeat window, and so the
+/// number of workers, before any model or history is allocated. Blocks are read
+/// in order. A block's header is checked against the limits the encoder obeys,
+/// which also bounds what a forged header can make the decoder allocate; then
+/// its payload is read and its checksum verified. The blocks are decoded in
+/// parallel. Rebuilding long repeats and writing the output happen in order,
+/// since copies refer to earlier output. Last, the trailer's length and
+/// checksum must match the data.
 fn decompress_member<R: BufRead, W: Write>(
     input: &mut R,
     output: &mut W,
@@ -712,11 +715,10 @@ fn decompress_member<R: BufRead, W: Write>(
             read_exact_or_truncated(input, &mut bh[1..])?;
             let raw_len = u32::from_le_bytes(bh[1..5].try_into().expect("4 bytes")) as usize;
             let packed_len = u32::from_le_bytes(bh[5..9].try_into().expect("4 bytes")) as usize;
-            // The encoder only emits a coded block when it is smaller than
-            // the raw data; this also bounds allocations on corrupt input.
-            // With long-repeat commands, a frame's payload is its residual
-            // (at most raw_len) plus a command list of at most a few bytes
-            // per 256 copied bytes; bound it generously but finitely.
+            // These are the limits the encoder obeys, and they bound what
+            // corrupt input can make us allocate. With long-repeat commands
+            // a payload is a residual of at most raw_len and a command list
+            // of a few bytes for each 256 copied.
             let ok = raw_len >= 1
                 && raw_len <= block_size
                 && match (kind, dedup.is_some()) {
@@ -728,10 +730,9 @@ fn decompress_member<R: BufRead, W: Write>(
             if !ok {
                 return Err(invalid(format!("corrupt block header (kind {kind}, raw {raw_len}, packed {packed_len})")));
             }
-            // Read incrementally: requested capacity grows (geometrically,
-            // never past packed_len) only as data actually arrives, so a
-            // forged length on a truncated stream cannot force a large
-            // allocation.
+            // The payload is read as it arrives and its buffer grows with
+            // it, never past packed_len, so a forged length on a truncated
+            // stream cannot force a large allocation.
             let mut payload: Vec<u8> = Vec::new();
             while payload.len() < packed_len {
                 let avail = input.fill_buf()?;
@@ -832,7 +833,7 @@ mod tests {
         DecodeOptions { threads, memory: DEFAULT_MEMORY }
     }
 
-    /// Recompute a modified header's CRC, so the change reaches the checks
+    /// Recomputes a modified header's CRC, so the change reaches the checks
     /// behind it.
     fn reseal(h: &mut [u8]) {
         let crc = Crc64::of(&h[..8]);
@@ -1005,7 +1006,7 @@ mod tests {
         assert!(msg(&k).contains("corrupt block header"));
     }
 
-    /// Split a single-member stream into (header, blocks, tail) byte ranges.
+    /// Splits a single-member stream into (header, blocks, tail) byte ranges.
     fn split_blocks(packed: &[u8]) -> (Vec<u8>, Vec<Vec<u8>>, Vec<u8>) {
         let mut pos = HEADER_LEN;
         let mut blocks = Vec::new();

@@ -52,9 +52,9 @@ fn corrupt(msg: &str) -> io::Error {
 /// Longest LEB128 encoding of a `u64`.
 pub(crate) const MAX_VARINT_LEN: usize = 10;
 
-/// Append `v` as an unsigned LEB128 varint (the variable-length integers
-/// of the DWARF debugging format, version 2 onward): seven bits per byte,
-/// least significant first, the top bit set on every byte but the last.
+/// Appends `v` as an unsigned LEB128 varint, the variable-length integer of the
+/// DWARF debugging format: seven bits to a byte, least significant first, with
+/// the top bit set on every byte but the last.
 pub(crate) fn put_varint(mut v: u64, out: &mut Vec<u8>) {
     while v >= 0x80 {
         out.push((v as u8) | 0x80);
@@ -63,9 +63,9 @@ pub(crate) fn put_varint(mut v: u64, out: &mut Vec<u8>) {
     out.push(v as u8);
 }
 
-/// Read a canonical unsigned LEB128 varint: at most [`MAX_VARINT_LEN`]
-/// bytes, no bits beyond 64, and no overlong encoding (a final zero byte
-/// after the first).
+/// Reads a canonical unsigned LEB128 varint: at most [`MAX_VARINT_LEN`] bytes,
+/// no bits beyond 64, and no overlong encoding (a final zero byte after the
+/// first).
 pub(crate) fn get_varint(buf: &[u8], pos: &mut usize) -> io::Result<u64> {
     let mut v = 0u64;
     for i in 0..MAX_VARINT_LEN {
@@ -173,7 +173,7 @@ impl Deduper {
         s[..SEED].iter().fold(0u64, |h, &b| h.wrapping_mul(BASE).wrapping_add(u64::from(b) + 1))
     }
 
-    /// Slide fingerprint `h` one byte: drop `out`, take in `inc`.
+    /// Slides fingerprint `h` one byte: `out` leaves and `inc` enters.
     #[inline]
     fn roll(&self, h: u64, out: u8, inc: u8) -> u64 {
         h.wrapping_sub(self.base_pow.wrapping_mul(u64::from(out) + 1))
@@ -181,7 +181,7 @@ impl Deduper {
             .wrapping_add(u64::from(inc) + 1)
     }
 
-    /// Split `frame` into (residual, commands). The commands are varints:
+    /// Splits `frame` into (residual, commands). The commands are varints:
     /// a `(literal run, copy length, distance)` triple per copy, then the
     /// length of the final literal run.
     ///
@@ -262,7 +262,7 @@ impl Deduper {
 }
 
 /// The copy of at least [`MIN_COPY`] bytes through the seed at `frame[p..]`
-/// and absolute source position `q`, if the seed really matches: extended
+/// and absolute source position `q`, if the seed matches: extended
 /// forward within the frame and backward, but not before the pending
 /// literal run (`lit_start`) nor before what `byte` can read. Returns its
 /// start in the frame and its length.
@@ -295,92 +295,96 @@ fn extend(
 const CMDS_RAW: u8 = 0;
 const CMDS_CODED: u8 = 1;
 
-/// Longest bit length a coded field may have: every value is below the
-/// largest window, 2^36 (see `crate::format::MAX_DEDUP_LOG2`).
-const MAX_FIELD_BITS: u32 = 37;
-/// Bits below the leading one that are coded adaptively; the rest are
-/// coded at one half each.
-const FIELD_TOP: u32 = 4;
-/// Distances remembered for the "repeat" code.
-const REPS: usize = 4;
+/// The most bits `x + 1` can have for a coded number `x`. Every number is
+/// below the largest window, 2^36 (see `crate::format::MAX_DEDUP_LOG2`).
+const MAX_FIELD_BITS: usize = 37;
+/// Bits below the leading one that have adaptive models.
+const MODELED: u32 = 4;
+/// Distances kept on the recency list.
+const RECENT: usize = 4;
 
-/// Adaptive code for one kind of number (literal run, copy length or
-/// distance), as in LZMA: the bit length by a binary tree, then the top
-/// `FIELD_TOP` bits below the leading one in the context of that length,
-/// then the remaining bits flat.
+/// An adaptive code for one kind of number: a literal run, a copy length or
+/// a distance.
+///
+/// The number is written in Elias's gamma code (1975): for `v = x + 1` of `n`
+/// bits, `n − 1` in unary and then the `n − 1` bits of `v` below its leading
+/// one. Every bit goes through the binary coder. A unary bit has a model for
+/// its position, so the coder learns how long the numbers are. The first
+/// [`MODELED`] bits below the leading one have models chosen by `n` and the
+/// bits before them, because the leading digits of a quantity are far from
+/// uniform. The lower bits are close to uniform and are coded at one half.
+///
+/// P. Elias, *Universal Codeword Sets and Representations of the Integers*,
+/// IEEE Trans. Inf. Theory 21(2), 1975, pp. 194–203.
 struct Field {
-    len: [BitModel; 64],
+    unary: [BitModel; MAX_FIELD_BITS],
     top: Vec<BitModel>,
 }
 
 impl Field {
     fn new() -> Self {
-        Field { len: [BitModel::new(); 64], top: vec![BitModel::new(); (MAX_FIELD_BITS as usize + 1) << FIELD_TOP] }
+        Field { unary: [BitModel::new(); MAX_FIELD_BITS], top: vec![BitModel::new(); (MAX_FIELD_BITS + 1) << MODELED] }
     }
 
     fn put(&mut self, e: &mut RangeEncoder<Bounded>, x: u64) -> io::Result<()> {
-        let nb = 64 - x.leading_zeros();
-        debug_assert!(nb <= MAX_FIELD_BITS);
-        let mut node = 1;
-        for i in (0..6).rev() {
-            let bit = (nb >> i) & 1 != 0;
-            e.encode_bit(&mut self.len[node], bit)?;
-            node = (node << 1) | usize::from(bit);
+        let v = x + 1;
+        let n = (64 - v.leading_zeros()) as usize;
+        debug_assert!(n <= MAX_FIELD_BITS);
+        // The longest length needs no closing 0.
+        for i in 1..=n.min(MAX_FIELD_BITS - 1) {
+            e.encode_bit(&mut self.unary[i - 1], i < n)?;
         }
-        if nb <= 1 {
-            return Ok(());
-        }
-        let rest = nb - 1;
-        let top = rest.min(FIELD_TOP);
+        let rest = n as u32 - 1;
+        let top = rest.min(MODELED);
         let mut ctx = 1;
         for i in (rest - top..rest).rev() {
-            let bit = (x >> i) & 1 != 0;
-            e.encode_bit(&mut self.top[((nb as usize) << FIELD_TOP) + ctx], bit)?;
+            let bit = (v >> i) & 1 != 0;
+            e.encode_bit(&mut self.top[(n << MODELED) + ctx], bit)?;
             ctx = (ctx << 1) | usize::from(bit);
         }
         let flat = rest - top;
-        e.encode_direct((x & ((1 << flat) - 1)) as u32, flat)
+        e.encode_direct((v & ((1 << flat) - 1)) as u32, flat)
     }
 
-    /// The next value; a bit length beyond `MAX_FIELD_BITS` is corrupt.
-    fn get(&mut self, d: &mut RangeDecoder) -> io::Result<u64> {
-        let mut node = 1;
-        for _ in 0..6 {
-            let bit = d.decode_bit(&mut self.len[node]);
-            node = (node << 1) | usize::from(bit);
+    fn get(&mut self, d: &mut RangeDecoder) -> u64 {
+        let mut n = 1;
+        while n < MAX_FIELD_BITS && d.decode_bit(&mut self.unary[n - 1]) {
+            n += 1;
         }
-        let nb = (node - 64) as u32;
-        if nb > MAX_FIELD_BITS {
-            return Err(corrupt("coded command field too long"));
-        }
-        if nb <= 1 {
-            return Ok(u64::from(nb));
-        }
-        let rest = nb - 1;
-        let top = rest.min(FIELD_TOP);
-        let (mut x, mut ctx) = (1u64, 1);
+        let rest = n as u32 - 1;
+        let top = rest.min(MODELED);
+        let (mut v, mut ctx) = (1u64, 1);
         for _ in 0..top {
-            let bit = d.decode_bit(&mut self.top[((nb as usize) << FIELD_TOP) + ctx]);
+            let bit = d.decode_bit(&mut self.top[(n << MODELED) + ctx]);
             ctx = (ctx << 1) | usize::from(bit);
-            x = (x << 1) | u64::from(bit);
+            v = (v << 1) | u64::from(bit);
         }
         let flat = rest - top;
-        Ok((x << flat) | u64::from(d.decode_direct(flat)))
+        ((v << flat) | u64::from(d.decode_direct(flat))) - 1
     }
 }
 
 /// The models for the structured command code.
+///
+/// Records and tables repeat at a few distances, so the last [`RECENT`]
+/// distinct distances are kept most recent first, as in the move-to-front
+/// scheme of Bentley, Sleator, Tarjan and Wei (1986). A distance on the list
+/// is coded as its rank, in unary, and moves to the front. Any other is coded
+/// as a number and pushes the oldest off the list.
+///
+/// J. L. Bentley, D. D. Sleator, R. E. Tarjan and V. K. Wei, *A Locally
+/// Adaptive Data Compression Scheme*, Comm. ACM 29(4), 1986, pp. 320–330.
 struct CommandModel {
     count: Field,
     literal: Field,
     length: Field,
     distance: Field,
-    /// Whether a copy repeats a recent distance, by whether the last did.
-    repeat: [BitModel; 2],
-    /// Which recent distance: a two-level tree.
-    which: [BitModel; 3],
-    recent: [u64; REPS],
-    last_repeated: usize,
+    /// Whether a distance is on the list, by whether the last one was.
+    listed: [BitModel; 2],
+    /// The unary bits of a rank.
+    rank: [BitModel; RECENT - 1],
+    recent: [u64; RECENT],
+    last_listed: usize,
 }
 
 impl CommandModel {
@@ -390,24 +394,24 @@ impl CommandModel {
             literal: Field::new(),
             length: Field::new(),
             distance: Field::new(),
-            repeat: [BitModel::new(); 2],
-            which: [BitModel::new(); 3],
-            recent: [0; REPS],
-            last_repeated: 0,
+            listed: [BitModel::new(); 2],
+            rank: [BitModel::new(); RECENT - 1],
+            recent: [0; RECENT],
+            last_listed: 0,
         }
     }
 
-    /// Make `i` the most recent distance.
+    /// Makes `i` the most recent distance.
     fn touch(&mut self, i: usize) {
         self.recent[..=i].rotate_right(1);
     }
 }
 
-/// Store a frame's raw command list (as [`Deduper::frame`] makes it):
+/// Stores a frame's raw command list (as [`Deduper::frame`] makes it):
 /// a selector byte and the smaller of the raw list and its structured
 /// code. The structured code is the number of copies; for each copy its
-/// literal run, whether its distance repeats one of the last four (and
-/// which) or else the distance less one, and its length less
+/// literal run, its distance as a rank on the recency list or else as the
+/// distance less one, and its length less
 /// [`MIN_COPY`]; then the final literal run.
 pub(crate) fn pack_commands(raw: &[u8]) -> Vec<u8> {
     let (selector, body) = match code_commands(raw) {
@@ -446,20 +450,22 @@ fn code_commands(raw: &[u8]) -> Option<Vec<u8>> {
         let dist = get_varint(raw, &mut pos).ok()?;
         m.literal.put(&mut e, lit).ok()?;
         let hit = m.recent.iter().position(|&r| r == dist);
-        e.encode_bit(&mut m.repeat[m.last_repeated], hit.is_some()).ok()?;
+        e.encode_bit(&mut m.listed[m.last_listed], hit.is_some()).ok()?;
         match hit {
             Some(i) => {
-                e.encode_bit(&mut m.which[0], i >= 2).ok()?;
-                e.encode_bit(&mut m.which[1 + usize::from(i >= 2)], i & 1 != 0).ok()?;
+                // The last rank needs no closing 0.
+                for k in 0..(i + 1).min(RECENT - 1) {
+                    e.encode_bit(&mut m.rank[k], k < i).ok()?;
+                }
                 m.touch(i);
             }
             None => {
                 m.distance.put(&mut e, dist - 1).ok()?;
-                m.touch(REPS - 1);
+                m.touch(RECENT - 1);
                 m.recent[0] = dist;
             }
         }
-        m.last_repeated = usize::from(hit.is_some());
+        m.last_listed = usize::from(hit.is_some());
         m.length.put(&mut e, len - MIN_COPY as u64).ok()?;
     }
     m.literal.put(&mut e, get_varint(raw, &mut pos).ok()?).ok()?;
@@ -479,34 +485,35 @@ pub(crate) fn unpack_commands(packed: &[u8], raw_len: usize) -> io::Result<Vec<u
     let mut d = RangeDecoder::new(body)?;
     let mut m = CommandModel::new();
     // Every copy covers at least MIN_COPY bytes of the frame.
-    let copies = m.count.get(&mut d)?;
+    let copies = m.count.get(&mut d);
     if copies > (raw_len / MIN_COPY) as u64 {
         return Err(corrupt("too many coded commands"));
     }
     let mut raw = Vec::with_capacity((3 * copies as usize + 1) * MAX_VARINT_LEN);
     for _ in 0..copies {
-        put_varint(m.literal.get(&mut d)?, &mut raw);
-        let dist = if d.decode_bit(&mut m.repeat[m.last_repeated]) {
-            let hi = d.decode_bit(&mut m.which[0]);
-            let lo = d.decode_bit(&mut m.which[1 + usize::from(hi)]);
-            let i = 2 * usize::from(hi) + usize::from(lo);
+        put_varint(m.literal.get(&mut d), &mut raw);
+        let dist = if d.decode_bit(&mut m.listed[m.last_listed]) {
+            let mut i = 0;
+            while i < RECENT - 1 && d.decode_bit(&mut m.rank[i]) {
+                i += 1;
+            }
             // An unset slot is 0, which the reconstructor rejects.
             let dist = m.recent[i];
             m.touch(i);
-            m.last_repeated = 1;
+            m.last_listed = 1;
             dist
         } else {
-            let dist = m.distance.get(&mut d)? + 1;
-            m.touch(REPS - 1);
+            let dist = m.distance.get(&mut d) + 1;
+            m.touch(RECENT - 1);
             m.recent[0] = dist;
-            m.last_repeated = 0;
+            m.last_listed = 0;
             dist
         };
-        let len = m.length.get(&mut d)? + MIN_COPY as u64;
+        let len = m.length.get(&mut d) + MIN_COPY as u64;
         put_varint(len, &mut raw);
         put_varint(dist, &mut raw);
     }
-    put_varint(m.literal.get(&mut d)?, &mut raw);
+    put_varint(m.literal.get(&mut d), &mut raw);
     d.finish().map_err(|e| corrupt(&e.to_string()))?;
     Ok(raw)
 }
@@ -523,7 +530,7 @@ impl Reconstructor {
         Reconstructor { hist: History::new(window) }
     }
 
-    /// Rebuild a frame of exactly `raw_len` bytes. Every length and distance
+    /// Rebuilds a frame of `raw_len` bytes. Every length and distance
     /// is checked: copies reach back at most `min(window, produced)` bytes,
     /// never forward, and the frame must consume the whole residual and
     /// command list.
@@ -733,22 +740,20 @@ mod tests {
         let packed = [&[CMDS_CODED][..], &code].concat();
         assert_eq!(unpack_commands(&packed, 3 * MIN_COPY).unwrap(), many);
         assert!(unpack_commands(&packed, 3 * MIN_COPY - 1).is_err(), "copies must fit the frame");
-        // Every bit length past the largest field is refused, before any
-        // table lookup or direct bits (the count field is coded first).
-        for nb in MAX_FIELD_BITS + 1..64 {
-            let mut f = Field::new();
-            let mut e = RangeEncoder::new(Bounded::new(64));
-            let mut node = 1;
-            for i in (0..6).rev() {
-                let bit = (nb >> i) & 1 != 0;
-                e.encode_bit(&mut f.len[node], bit).unwrap();
-                node = (node << 1) | usize::from(bit);
-            }
-            let code = e.finish().unwrap().into_inner();
-            let packed = [&[CMDS_CODED][..], &code].concat();
-            let err = unpack_commands(&packed, 1 << 20).unwrap_err();
-            assert!(err.to_string().contains("too long"), "bit length {nb}: {err}");
+        // A field codes every number below 2^36, and the longest length is
+        // the one without a closing bit.
+        let mut values = vec![0, 1, 2, 255, 256, (1 << 36) - 2, (1 << 36) - 1];
+        values.extend((1..36).flat_map(|k| [(1u64 << k) - 1, 1 << k, (1 << k) + 1]));
+        let (mut f, mut e) = (Field::new(), RangeEncoder::new(Bounded::new(1 << 12)));
+        for &x in &values {
+            f.put(&mut e, x).unwrap();
         }
+        let code = e.finish().unwrap().into_inner();
+        let (mut f, mut d) = (Field::new(), RangeDecoder::new(&code).unwrap());
+        for &x in &values {
+            assert_eq!(f.get(&mut d), x);
+        }
+        d.finish().unwrap();
     }
 
     #[test]

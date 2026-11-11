@@ -1,0 +1,2 @@
+Wed Nov 11 02:14:33 AM UTC 2026
+main-v14: the knuth-cpu7 worker was ended after its first file (1 row, the 48.7 GB input); its other 1,228 files are in main-v14-rest. The validator below therefore reports a count mismatch for knuth-cpu7 and the run exits 1.
