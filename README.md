@@ -10,6 +10,17 @@ G. G. Langdon, Jr., *An Introduction to Arithmetic Coding* (IBM J. Res.
 Develop. 28(2), 1984). `acz` is a command-line file compressor built on
 the library. Neither uses external crate dependencies or `unsafe` code.
 
+## Installing
+
+With [Homebrew](https://brew.sh), on macOS or Linux:
+
+```sh
+brew install darrelllong/tap/acz
+```
+
+This builds from source and installs `acz`, `unacz`, `aczcat` and the
+manual page.
+
 ## Building
 
 ```sh
